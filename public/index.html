@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EN-supporter</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f7fb; color: #222; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+    .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 180px; }
+    button { border: none; background: #2563eb; color: #fff; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+    button.secondary { background: #64748b; }
+    input, select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    .muted { color: #64748b; font-size: 13px; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app"></div>
+  <script>
+    const KEY_PATIENTS = "en_patients_v1";
+    const KEY_SETTINGS = "en_formula_settings_v1";
+    const KEY_RECORDS = "en_records_v1";
+    const state = { page: "top", selectedPatientId: null, formulas: [] };
+
+    const app = document.getElementById("app");
+    const j = (v) => JSON.stringify(v);
+    const load = (k, d = []) => { try { return JSON.parse(localStorage.getItem(k) || j(d)); } catch { return d; } };
+    const save = (k, v) => localStorage.setItem(k, j(v));
+    const fmt = (n, d=1) => Number(n || 0).toFixed(d);
+    const today = () => new Date().toISOString().slice(0, 10);
+
+    async function fetchFormulas() {
+      const res = await fetch("/api/formulas");
+      state.formulas = await res.json();
+    }
+
+    function getEnabledFormulas() {
+      const settings = load(KEY_SETTINGS, []);
+      if (!settings.length) return state.formulas;
+      const enabled = new Set(settings.filter(s => s.enabled).map(s => s.name));
+      return state.formulas.filter(f => enabled.has(f.name));
+    }
+
+    function render() {
+      if (state.page === "top") return renderTop();
+      if (state.page === "register") return renderRegister();
+      if (state.page === "settings") return renderSettings();
+      if (state.page === "select") return renderSelect();
+      return renderStrategy();
+    }
+
+    function nav() {
+      return `<div class="card"><button class="secondary" onclick="go('top')">トップへ</button></div>`;
+    }
+
+    function go(page) { state.page = page; render(); }
+    window.go = go;
+
+    function renderTop() {
+      app.innerHTML = `
+        <div class="card"><h1>EN-supporter</h1></div>
+        <div class="card row">
+          <button onclick="go('register')">新規患者を登録する</button>
+          <button onclick="go('select')">登録済み患者で戦略立案</button>
+          <button onclick="go('settings')">設定ページ</button>
+        </div>`;
+    }
+
+    function renderRegister() {
+      app.innerHTML = `
+        ${nav()}
+        <div class="card">
+          <h2>新規患者登録</h2>
+          <div class="row">
+            <div><label>患者ID</label><input id="pid" /></div>
+            <div><label>入室日</label><input id="admit" type="date" value="${today()}" /></div>
+            <div><label>本日の日付</label><input id="td" type="date" value="${today()}" /></div>
+            <div><label>身長(cm)</label><input id="ht" type="number" value="170" step="0.5"/></div>
+            <div><label>体重(kg)</label><input id="wt" type="number" value="60" step="0.5"/></div>
+          </div><br/>
+          <button onclick="registerPatient()">患者を登録</button>
+          <div id="msg" class="muted"></div>
+        </div>`;
+    }
+
+    window.registerPatient = () => {
+      const p = {
+        patient_id: document.getElementById("pid").value.trim(),
+        icu_admission_date: document.getElementById("admit").value,
+        today: document.getElementById("td").value,
+        height_cm: Number(document.getElementById("ht").value),
+        weight_kg: Number(document.getElementById("wt").value),
+      };
+      const msg = document.getElementById("msg");
+      if (!p.patient_id) return (msg.textContent = "患者IDを入力してください。");
+      const patients = load(KEY_PATIENTS, []);
+      if (patients.some(x => x.patient_id === p.patient_id)) return (msg.textContent = "同じ患者IDが既にあります。");
+      patients.push(p); save(KEY_PATIENTS, patients);
+      state.selectedPatientId = p.patient_id; state.page = "select"; render();
+    };
+
+    function renderSettings() {
+      const existing = load(KEY_SETTINGS, []);
+      const setMap = new Map(existing.map(x => [x.name, !!x.enabled]));
+      const rows = state.formulas.map(f => `<tr>
+        <td>${f.name}</td><td>${f.vendor || ""}</td>
+        <td><input type="checkbox" data-name="${f.name}" ${setMap.has(f.name) ? (setMap.get(f.name) ? "checked" : "") : "checked"} /></td>
+      </tr>`).join("");
+      app.innerHTML = `
+        ${nav()}
+        <div class="card">
+          <h2>設定ページ</h2>
+          <p class="muted">施設採用の製剤にチェックを入れて保存してください。</p>
+          <table><thead><tr><th>製剤名</th><th>メーカー</th><th>施設採用</th></tr></thead><tbody>${rows}</tbody></table>
+          <br/><button onclick="saveSettings()">設定を保存</button>
+          <span id="smsg" class="muted"></span>
+        </div>`;
+    }
+
+    window.saveSettings = () => {
+      const rows = [...document.querySelectorAll("input[type='checkbox'][data-name]")];
+      save(KEY_SETTINGS, rows.map(r => ({ name: r.dataset.name, enabled: r.checked })));
+      document.getElementById("smsg").textContent = " 保存しました。";
+    };
+
+    function renderSelect() {
+      const patients = load(KEY_PATIENTS, []);
+      if (!patients.length) {
+        app.innerHTML = `${nav()}<div class="card"><p>登録済み患者がいません。</p></div>`;
+        return;
+      }
+      const options = patients.map(p => `<option value="${p.patient_id}">${p.patient_id} | 入室日:${p.icu_admission_date} | 体重:${p.weight_kg}kg</option>`).join("");
+      app.innerHTML = `
+        ${nav()}
+        <div class="card">
+          <h2>患者選択</h2>
+          <select id="sel">${options}</select><br/><br/>
+          <button onclick="selectPatient()">この患者で戦略立案へ進む</button>
+        </div>`;
+    }
+
+    window.selectPatient = () => {
+      state.selectedPatientId = document.getElementById("sel").value;
+      state.page = "strategy";
+      render();
+    };
+
+    function renderStrategy() {
+      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
+      if (!p) return go("select");
+      const formulas = getEnabledFormulas();
+      if (!formulas.length) {
+        app.innerHTML = `${nav()}<div class="card">設定ページで製剤を選択してください。</div>`;
+        return;
+      }
+      const formulaOptions = formulas.map(f => `<option value="${f.name}">${f.name}</option>`).join("");
+      const days = Math.max(1, Math.floor((new Date(p.today) - new Date(p.icu_admission_date)) / 86400000) + 1);
+      const dayLabel = `Day${Math.min(days, 7)}`;
+      app.innerHTML = `
+        ${nav()}
+        <div class="card"><h2>戦略立案: ${p.patient_id} <span class="badge">${dayLabel}</span></h2></div>
+        <div class="card">
+          <h3>製剤選択 / 現在の投与量</h3>
+          <div class="row">
+            <div><label>製剤</label><select id="formula">${formulaOptions}</select></div>
+            <div><label>現在の投与速度 (mL/h)</label><input id="rate" type="number" value="50" step="5"></div>
+            <div><label>本日の投与時間 (h/day)</label><input id="hours" type="number" value="24" step="1"></div>
+            <div><label>Day7 目標達成率(%)</label><input id="day7" type="number" value="100" step="5"></div>
+          </div><br/>
+          <button onclick="calcPlan()">計算する</button>
+          <div id="out"></div>
+        </div>
+        <div class="card">
+          <h3>連日投与記録（時系列）</h3>
+          <div id="records"></div>
+        </div>`;
+      renderRecordsTable();
+    }
+
+    window.calcPlan = () => {
+      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
+      const f = getEnabledFormulas().find(x => x.name === document.getElementById("formula").value);
+      const rate = Number(document.getElementById("rate").value);
+      const hours = Number(document.getElementById("hours").value);
+      const day7 = Number(document.getElementById("day7").value);
+      const vol = rate * hours;
+      const kcal = vol * Number(f.kcal_per_ml || 0);
+      const protein = vol / 100 * Number(f.protein_g_per_100ml || 0);
+      const carb100 = Math.max(((Number(f.kcal_per_ml || 0) * 100) - Number(f.protein_g_per_100ml || 0) * 4) / 4, 0);
+      const carb = vol / 100 * carb100;
+      const targetKcal = Number(p.weight_kg) * 25;
+      const targetProtein = Number(p.weight_kg) * 1.2;
+      const targetCarb = Math.max((targetKcal - targetProtein * 4) / 4, 0);
+      const day = Math.max(1, Math.floor((new Date(p.today) - new Date(p.icu_admission_date)) / 86400000) + 1);
+      const dayNow = Math.min(day, 7);
+      const dayRatio = targetKcal > 0 ? kcal / targetKcal * 100 : 0;
+      const day7kcal = targetKcal * (day7 / 100);
+      const ratioTodayIdeal = day7 <= dayRatio ? dayRatio : (dayRatio + (day7 - dayRatio) * ((dayNow - 1) / 6));
+      const idealKcal = targetKcal * ratioTodayIdeal / 100;
+      const diff = kcal - idealKcal;
+      const reached = kcal >= day7kcal && day7kcal > 0;
+      const fb = reached
+        ? `Day7目標(${fmt(day7kcal,0)}kcal/day)は達成済みです。`
+        : `同Day理想目標との差: ${diff >= 0 ? "+" : ""}${fmt(diff,0)} kcal/day`;
+      const out = document.getElementById("out");
+      out.innerHTML = `
+        <p><b>本日の投与:</b> ${fmt(vol,0)}mL/day | ${fmt(kcal,0)}kcal/day | たんぱく質 ${fmt(protein)}g/day | 糖質 ${fmt(carb)}g/day</p>
+        <p><b>Day${dayNow}理想目標:</b> ${fmt(idealKcal,0)}kcal/day / <b>Day7目標:</b> ${fmt(day7kcal,0)}kcal/day</p>
+        <p class="muted">${fb}</p>
+        <button onclick="saveRecord('${f.name}', ${rate}, ${hours}, ${vol}, ${kcal}, ${protein}, ${carb}, ${dayNow})">この計画で投与を実施する</button>
+      `;
+    };
+
+    window.saveRecord = (formula, rate, hours, vol, kcal, protein, carb, icuDay) => {
+      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
+      const records = load(KEY_RECORDS, []);
+      const recordDate = p.today || today();
+      const next = records.filter(r => !(r.patient_id === p.patient_id && r.record_date === recordDate));
+      next.push({ patient_id: p.patient_id, record_date: recordDate, icu_day: icuDay, formula_name: formula, rate_ml_h: rate, hours_per_day: hours, volume_ml_day: vol, kcal_day: kcal, protein_g_day: protein, carbohydrate_g_day: carb });
+      save(KEY_RECORDS, next);
+      renderRecordsTable();
+      alert("投与記録を保存しました。");
+    };
+
+    function renderRecordsTable() {
+      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
+      const rows = load(KEY_RECORDS, []).filter(r => r.patient_id === p.patient_id).sort((a,b) => a.icu_day - b.icu_day)
+        .map(r => `<tr><td>Day${r.icu_day}</td><td>${r.record_date}</td><td>${r.formula_name}</td><td>${fmt(r.kcal_day,0)}</td><td>${fmt(r.protein_g_day)}</td><td>${fmt(r.carbohydrate_g_day)}</td></tr>`)
+        .join("");
+      document.getElementById("records").innerHTML = rows
+        ? `<table><thead><tr><th>Day</th><th>日付</th><th>製剤</th><th>kcal/day</th><th>たんぱく質g/day</th><th>糖質g/day</th></tr></thead><tbody>${rows}</tbody></table>`
+        : `<p class="muted">記録なし</p>`;
+    }
+
+    (async function init() {
+      await fetchFormulas();
+      render();
+    })();
+  </script>
+</body>
+</html>
