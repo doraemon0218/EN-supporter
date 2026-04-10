@@ -38,12 +38,25 @@
       box-shadow: 0 2px 12px rgba(0,0,0,.12);
       background: #2563eb;
     }
+    #streamlit-full-app-bar {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 10px 16px;
+      background: #eff6ff;
+      border-bottom: 1px solid #bfdbfe;
+      font-size: 14px;
+    }
+    #streamlit-full-app-bar a { color: #1d4ed8; font-weight: 600; }
   </style>
 </head>
 <body>
   <button type="button" id="global-home-btn" onclick="go('top')">ホーム</button>
+  <div id="streamlit-full-app-bar" style="display:none" aria-hidden="true"></div>
   <div class="wrap" id="app"></div>
   <script>
+    /** Streamlit Community Cloud のアプリ URL。デプロイ後にここへ貼ると、Vercel からフル版へ誘導できます。 */
+    const STREAMLIT_APP_URL = "";
+
     const KEY_PATIENTS = "en_patients_v1";
     const KEY_SETTINGS = "en_formula_settings_v1";
     const KEY_RECORDS = "en_records_v1";
@@ -284,6 +297,17 @@
         ? `<table><thead><tr><th>Day</th><th>日付</th><th>製剤</th><th>kcal/day</th><th>たんぱく質g/day</th><th>糖質g/day</th></tr></thead><tbody>${rows}</tbody></table>`
         : `<p class="muted">記録なし</p>`;
     }
+
+    (function setupStreamlitLinkBar() {
+      const bar = document.getElementById("streamlit-full-app-bar");
+      if (!bar || !STREAMLIT_APP_URL || !STREAMLIT_APP_URL.startsWith("http")) return;
+      bar.style.display = "block";
+      bar.removeAttribute("aria-hidden");
+      bar.innerHTML =
+        "このページは軽量版です。開発の最新版（患者登録・戦略立案の一式）は " +
+        `<a href="${STREAMLIT_APP_URL}" target="_blank" rel="noopener noreferrer">Streamlit 版</a>` +
+        " を開いてください。";
+    })();
 
     (async function init() {
       await fetchFormulas();

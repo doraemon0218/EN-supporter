@@ -1,66 +1,81 @@
 # EN-supporter
 
-経腸栄養の製剤選択・投与計画を支援するWebアプリです。  
-Vercel デプロイ向けに、`FastAPI + 静的フロントエンド` 構成にしています。
+経腸栄養の製剤選択・投与計画を支援するツールです。
+
+## 開発の正（最新版）
+
+**ローカルで触っている `app.py`（Streamlit）が機能の最新版です。**  
+ここを主に編集し、GitHub の `main` に push して本番へ反映します。
+
+| 本番の種類 | 中身 | `main` に push すると |
+|------------|------|------------------------|
+| **Streamlit Community Cloud**（推奨・フル機能） | `app.py` + 同梱 CSV | 自動で再デプロイ（初回のみ Cloud でリポジトリ接続） |
+| **Vercel** | `public/index.html` + `api/index.py` + `data_formulas.csv` など | 自動で再デプロイ（Git 連携時） |
+
+**Vercel 上では Streamlit は動きません。** フル機能を URL で出したい場合は、必ず **Streamlit Community Cloud** を併用してください（同じリポジトリでよい）。
+
+### いつもの手順（ローカル開発 → 本番更新）
+
+1. 機能は **`app.py`** を編集（必要なら `data_formulas.csv` や `public/index.html` も）。
+2. ローカル確認: `pip install -r requirements.txt` のうえ `streamlit run app.py`
+3. コミットして **`main` に push**
+4. **Streamlit Cloud**: 接続済みなら数分で `app.py` 側が更新される  
+5. **Vercel**: `public/` や `api/`・CSV を変えていれば同じ push で反映される
+
+### Streamlit Community Cloud（初回だけ）
+
+1. [Streamlit Community Cloud](https://streamlit.io/cloud) にサインイン
+2. GitHub リポジトリ **このプロジェクト** を選択
+3. **Main file path**: `app.py`、**Branch**: `main`
+4. デプロイ完了後に表示される URL（例: `https://xxx.streamlit.app`）を控える
+5. （任意）`public/index.html` 内の **`STREAMLIT_APP_URL`** にその URL を貼り、push すると Vercel の軽量版からフル版へリンクが出ます
 
 ## 構成
 
-- `api/index.py`: FastAPI API（製剤データ提供）
-- `public/index.html`: フロントエンド（画面・計算ロジック）
-- `data_formulas.csv`: 製剤マスタ
-- `vercel.json`: Vercelルーティング設定
-- `app.py`: **Streamlit** 版（機能が多い。ローカルや Streamlit Cloud 向け。**Vercel 本番には含まれません**）
+- **`app.py`**: Streamlit 版（**本番フル機能の正**）
+- **`api/index.py`**: FastAPI（製剤 API、`/api/formulas`）
+- **`public/index.html`**: Vercel 向け軽量フロント（`localStorage` 利用）
+- **`data_formulas.csv`**: 製剤マスタ（API・Streamlit 双方で参照）
+- **`vercel.json`**: Vercel ルーティング
 
-## 本番（Vercel）とローカルで画面が違うとき
-
-`vercel.json` では **`api/index.py` と `public/` の静的ファイルだけ** がデプロイ対象です。  
-そのため **`streamlit run app.py` で見ている画面は Vercel には反映されません。** 本番 URL は **`public/index.html` ベースの軽量版**です。
-
-- **Vercel 上の見た目・挙動を変えたい:** `public/index.html`（必要なら `api/index.py`）を編集し、`main` に push する（Git 連携が有効なら自動デプロイ）。
-- **Streamlit 版をクラウドで使いたい:** [Streamlit Community Cloud](https://streamlit.io/cloud) など、Streamlit 用のホスティングを別途用意する（Vercel だけでは `app.py` は動かしません）。
-- push 済みなのに本番が古い: Vercel ダッシュボードで対象プロジェクトが **この GitHub リポジトリ・`main` ブランチ** と紐づいているか確認し、「Redeploy」やキャッシュクリア、ブラウザのスーパーリロードを試してください。
-
-## ローカル実行
+## ローカル実行（Streamlit・最新版）
 
 ```bash
-cd "/Users/aiyamayuuki/EN supporter"
+cd "/path/to/EN supporter"
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+## ローカル実行（Vercel 構成の確認用）
+
+API:
+
+```bash
 pip install -r requirements.txt
 uvicorn api.index:app --reload --port 8000
 ```
 
-別ターミナルで静的ファイルを配信:
+別ターミナルで静的ファイル:
 
 ```bash
-cd "/Users/aiyamayuuki/EN supporter"
 python -m http.server 3000
 ```
 
 ブラウザで `http://localhost:3000/public/index.html` を開きます。
 
-## GitHub公開
+## Vercel デプロイ
 
-```bash
-git init
-git add .
-git commit -m "Migrate to FastAPI + Vercel-ready frontend"
-gh repo create <repo-name> --public --source=. --remote=origin --push
-```
-
-`--private` に変えると非公開で作成できます。
-
-## Vercelデプロイ
+GitHub とプロジェクトを接続していれば **`main` への push で自動デプロイ**されます。  
+CLI の場合:
 
 ```bash
 npm i -g vercel
 vercel
 ```
 
-初回は対話プロンプトに従って設定してください。  
-以後は `vercel --prod` で本番デプロイできます。
-
 ## 注意
 
-- 現在の患者データ・投与記録はブラウザの `localStorage` に保存されます。
+- `patients.csv` などは `.gitignore` されているため、**Streamlit Cloud ではリポジトリに含まれる CSV のみ**がそのまま使われます。ローカル専用データは本番に上がりません。
 - 本ツールは診療判断の補助目的です。最終判断は臨床チームで行ってください。

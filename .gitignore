@@ -1,6 +1,7 @@
 .venv/
 __pycache__/
 *.pyc
+.streamlit/secrets.toml
 
 # Local runtime data
 patients.csv
