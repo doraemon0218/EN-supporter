@@ -5,21 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EN-supporter</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f7fb; color: #222; }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 24px; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background: #f6f7fb; color: #222;
+      -webkit-tap-highlight-color: transparent; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
     .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
     .row { display: flex; gap: 12px; flex-wrap: wrap; }
-    .row > * { flex: 1; min-width: 180px; }
-    button { border: none; background: #2563eb; color: #fff; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+    .row > * { flex: 1; min-width: min(100%, 180px); }
+    button { border: none; background: #2563eb; color: #fff; border-radius: 12px; padding: 12px 18px; min-height: 48px;
+      font-size: 1rem; cursor: pointer; width: 100%; touch-action: manipulation; }
     button.secondary { background: #64748b; }
-    input, select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1; }
+    input, select { width: 100%; padding: 10px 12px; min-height: 44px; font-size: 16px; border-radius: 8px; border: 1px solid #cbd5e1; }
+    .btn-stack { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
     table { width: 100%; border-collapse: collapse; font-size: 14px; }
     th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
     .muted { color: #64748b; font-size: 13px; }
     .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; font-size: 12px; }
+    details.vendor-block { margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; background: #fafbfc; }
+    .formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 10px; }
+    @media (max-width: 720px) { .formula-grid { grid-template-columns: 1fr; } }
+    .formula-item label { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; cursor: pointer; min-height: 44px; }
+    .formula-item input[type="checkbox"] { width: 22px; height: 22px; min-width: 22px; flex-shrink: 0; margin-top: 2px; }
+    #global-home-btn {
+      position: fixed;
+      top: max(10px, env(safe-area-inset-top));
+      right: max(10px, env(safe-area-inset-right));
+      z-index: 10000;
+      width: auto;
+      min-width: 6.5rem;
+      max-width: 46vw;
+      padding: 10px 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.12);
+      background: #2563eb;
+    }
   </style>
 </head>
 <body>
+  <button type="button" id="global-home-btn" onclick="go('top')">ホーム</button>
   <div class="wrap" id="app"></div>
   <script>
     const KEY_PATIENTS = "en_patients_v1";
@@ -54,26 +76,21 @@
       return renderStrategy();
     }
 
-    function nav() {
-      return `<div class="card"><button class="secondary" onclick="go('top')">トップへ</button></div>`;
-    }
-
     function go(page) { state.page = page; render(); }
     window.go = go;
 
     function renderTop() {
       app.innerHTML = `
         <div class="card"><h1>EN-supporter</h1></div>
-        <div class="card row">
-          <button onclick="go('register')">新規患者を登録する</button>
-          <button onclick="go('select')">登録済み患者で戦略立案</button>
-          <button onclick="go('settings')">設定ページ</button>
+        <div class="card" style="display:flex;flex-direction:column;gap:12px;max-width:420px;">
+          <button type="button" onclick="go('register')">新規患者を登録する</button>
+          <button type="button" onclick="go('select')">登録済み患者で戦略立案</button>
+          <button type="button" onclick="go('settings')">採用製剤の設定</button>
         </div>`;
     }
 
     function renderRegister() {
       app.innerHTML = `
-        ${nav()}
         <div class="card">
           <h2>新規患者登録</h2>
           <div class="row">
@@ -83,7 +100,7 @@
             <div><label>身長(cm)</label><input id="ht" type="number" value="170" step="0.5"/></div>
             <div><label>体重(kg)</label><input id="wt" type="number" value="60" step="0.5"/></div>
           </div><br/>
-          <button onclick="registerPatient()">患者を登録</button>
+          <button type="button" onclick="registerPatient()">患者を登録</button>
           <div id="msg" class="muted"></div>
         </div>`;
     }
@@ -107,40 +124,66 @@
     function renderSettings() {
       const existing = load(KEY_SETTINGS, []);
       const setMap = new Map(existing.map(x => [x.name, !!x.enabled]));
-      const rows = state.formulas.map(f => `<tr>
-        <td>${f.name}</td><td>${f.vendor || ""}</td>
-        <td><input type="checkbox" data-name="${f.name}" ${setMap.has(f.name) ? (setMap.get(f.name) ? "checked" : "") : "checked"} /></td>
-      </tr>`).join("");
+      const byVendor = {};
+      for (const f of state.formulas) {
+        const v = f.vendor || "（メーカー未設定）";
+        if (!byVendor[v]) byVendor[v] = [];
+        byVendor[v].push(f);
+      }
+      const vendors = Object.keys(byVendor).sort();
+      let blocks = "";
+      for (const v of vendors) {
+        const list = byVendor[v].slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""), "ja"));
+        let inner = `<div class="formula-grid">`;
+        for (const f of list) {
+          const checked = setMap.has(f.name) ? setMap.get(f.name) : true;
+          const enc = encodeURIComponent(f.name || "");
+          const meta = f.kcal_per_ml != null ? `<span class="muted" style="font-size:11px;display:block;margin-top:2px">${fmt(f.kcal_per_ml, 2)} kcal/mL</span>` : "";
+          inner += `<div class="formula-item"><label><input type="checkbox" data-formula-name="${enc}" ${checked ? "checked" : ""}/><span>${(f.name || "").replace(/</g, "&lt;")}</span></label>${meta}</div>`;
+        }
+        inner += `</div>`;
+        blocks += `<details class="vendor-block" ${list.length <= 6 ? "open" : ""}><summary><b>${v.replace(/</g, "&lt;")}</b>（${list.length}製剤）</summary>${inner}</details>`;
+      }
       app.innerHTML = `
-        ${nav()}
         <div class="card">
-          <h2>設定ページ</h2>
-          <p class="muted">施設採用の製剤にチェックを入れて保存してください。</p>
-          <table><thead><tr><th>製剤名</th><th>メーカー</th><th>施設採用</th></tr></thead><tbody>${rows}</tbody></table>
-          <br/><button onclick="saveSettings()">設定を保存</button>
+          <h2>採用製剤の設定</h2>
+          <p class="muted"><code>data_formulas.csv</code> 由来の全<strong>${state.formulas.length}</strong>製剤を表示しています。採用する製剤にチェックを入れて保存してください。</p>
+          <div class="btn-stack">
+            <button type="button" onclick="setAllFormulas(true)">すべて採用</button>
+            <button type="button" class="secondary" onclick="setAllFormulas(false)">すべて解除</button>
+          </div>
+          ${blocks}
+          <br/><button type="button" onclick="saveSettings()">設定を保存</button>
           <span id="smsg" class="muted"></span>
         </div>`;
     }
 
+    window.setAllFormulas = (on) => {
+      document.querySelectorAll("input[data-formula-name]").forEach((el) => { el.checked = on; });
+    };
+
     window.saveSettings = () => {
-      const rows = [...document.querySelectorAll("input[type='checkbox'][data-name]")];
-      save(KEY_SETTINGS, rows.map(r => ({ name: r.dataset.name, enabled: r.checked })));
-      document.getElementById("smsg").textContent = " 保存しました。";
+      const rows = [...document.querySelectorAll("input[data-formula-name]")].map((r) => ({
+        name: decodeURIComponent(r.dataset.formulaName),
+        enabled: r.checked,
+      }));
+      save(KEY_SETTINGS, rows);
+      const n = rows.filter((r) => r.enabled).length;
+      document.getElementById("smsg").textContent = ` 保存しました（採用 ${n} 件）。`;
     };
 
     function renderSelect() {
       const patients = load(KEY_PATIENTS, []);
       if (!patients.length) {
-        app.innerHTML = `${nav()}<div class="card"><p>登録済み患者がいません。</p></div>`;
+        app.innerHTML = `<div class="card"><p>登録済み患者がいません。</p></div>`;
         return;
       }
       const options = patients.map(p => `<option value="${p.patient_id}">${p.patient_id} | 入室日:${p.icu_admission_date} | 体重:${p.weight_kg}kg</option>`).join("");
       app.innerHTML = `
-        ${nav()}
         <div class="card">
           <h2>患者選択</h2>
           <select id="sel">${options}</select><br/><br/>
-          <button onclick="selectPatient()">この患者で戦略立案へ進む</button>
+          <button type="button" onclick="selectPatient()">この患者で戦略立案へ進む</button>
         </div>`;
     }
 
@@ -155,24 +198,24 @@
       if (!p) return go("select");
       const formulas = getEnabledFormulas();
       if (!formulas.length) {
-        app.innerHTML = `${nav()}<div class="card">設定ページで製剤を選択してください。</div>`;
+        app.innerHTML = `<div class="card">採用製剤の設定で製剤を選択してください。</div>`;
         return;
       }
       const formulaOptions = formulas.map(f => `<option value="${f.name}">${f.name}</option>`).join("");
       const days = Math.max(1, Math.floor((new Date(p.today) - new Date(p.icu_admission_date)) / 86400000) + 1);
       const dayLabel = `Day${Math.min(days, 7)}`;
       app.innerHTML = `
-        ${nav()}
         <div class="card"><h2>戦略立案: ${p.patient_id} <span class="badge">${dayLabel}</span></h2></div>
         <div class="card">
           <h3>製剤選択 / 現在の投与量</h3>
+          <p class="muted" style="margin:0 0 12px">現在の入室日数（入室日を Day1）: <strong>Day${days}</strong></p>
           <div class="row">
             <div><label>製剤</label><select id="formula">${formulaOptions}</select></div>
             <div><label>現在の投与速度 (mL/h)</label><input id="rate" type="number" value="50" step="5"></div>
             <div><label>本日の投与時間 (h/day)</label><input id="hours" type="number" value="24" step="1"></div>
-            <div><label>Day7 目標達成率(%)</label><input id="day7" type="number" value="100" step="5"></div>
+            <div><label title="ガイドライン必要量に対し、Day7で何%ぶんを投与で満たしたいか">Day7の投与目標（ガイドライン比・%）</label><input id="day7" type="number" value="100" step="5"></div>
           </div><br/>
-          <button onclick="calcPlan()">計算する</button>
+          <button type="button" onclick="calcPlan()">計算する</button>
           <div id="out"></div>
         </div>
         <div class="card">
@@ -207,12 +250,17 @@
       const fb = reached
         ? `Day7目標(${fmt(day7kcal,0)}kcal/day)は達成済みです。`
         : `同Day理想目標との差: ${diff >= 0 ? "+" : ""}${fmt(diff,0)} kcal/day`;
+      const kpm = Number(f.kcal_per_ml || 0);
+      const day7vol = kpm > 0 ? day7kcal / kpm : 0;
+      const day7protein = day7vol / 100 * Number(f.protein_g_per_100ml || 0);
+      const day7carb = day7vol / 100 * carb100;
       const out = document.getElementById("out");
       out.innerHTML = `
-        <p><b>本日の投与:</b> ${fmt(vol,0)}mL/day | ${fmt(kcal,0)}kcal/day | たんぱく質 ${fmt(protein)}g/day | 糖質 ${fmt(carb)}g/day</p>
-        <p><b>Day${dayNow}理想目標:</b> ${fmt(idealKcal,0)}kcal/day / <b>Day7目標:</b> ${fmt(day7kcal,0)}kcal/day</p>
+        <p><b>現在の投与:</b> ${fmt(vol,0)} mL/day | ${fmt(kcal,0)} kcal/day | たんぱく質 ${fmt(protein)} g/day | 糖質 ${fmt(carb)} g/day</p>
+        <p><b>Day7時点の目標:</b> ${fmt(day7vol,0)} mL/day | ${fmt(day7kcal,0)} kcal/day | たんぱく質 ${fmt(day7protein)} g/day | 糖質 ${fmt(day7carb)} g/day</p>
+        <p><b>Day${dayNow}理想目標（エネルギー）:</b> ${fmt(idealKcal,0)} kcal/day</p>
         <p class="muted">${fb}</p>
-        <button onclick="saveRecord('${f.name}', ${rate}, ${hours}, ${vol}, ${kcal}, ${protein}, ${carb}, ${dayNow})">この計画で投与を実施する</button>
+        <button type="button" onclick="saveRecord('${f.name}', ${rate}, ${hours}, ${vol}, ${kcal}, ${protein}, ${carb}, ${dayNow})">この計画で投与を実施する</button>
       `;
     };
 

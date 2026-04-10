@@ -1,3 +1,4 @@
+import hashlib
 from datetime import date, datetime
 
 import altair as alt
@@ -9,9 +10,65 @@ PATIENT_FILE = "patients.csv"
 FORMULA_SETTING_FILE = "facility_formula_settings.csv"
 INFUSION_RECORD_FILE = "infusion_records.csv"
 
+# 時系列グラフ: 成分ごとの固定色（実測＝濃色、Day7目標＝同系の淡色）
+TS_SERIES_COLOR_DOMAIN: list[str] = [
+    "エネルギー(kcal/day)",
+    "たんぱく質(g/day)",
+    "糖質(g/day)",
+    "Day7目標エネルギー(kcal/day)",
+    "Day7目標たんぱく質(g/day)",
+    "Day7目標糖質(g/day)",
+]
+TS_SERIES_COLOR_RANGE: list[str] = [
+    "#dc2626",  # エネルギー 実測（赤）
+    "#2563eb",  # たんぱく質 実測（青）
+    "#15803d",  # 糖質 実測（緑）
+    "#fca5a5",  # Day7 エネルギー（薄赤）
+    "#93c5fd",  # Day7 たんぱく質（薄青）
+    "#86efac",  # Day7 糖質（薄緑）
+]
 
-@st.cache_data
+# 経腸栄養製剤のスナップショットと投与実績を保存する列（マスタにない製剤を手入力する場合も notes で補足可能）
+INFUSION_RECORD_COLUMNS: list[str] = [
+    "patient_id",
+    "record_date",
+    "icu_day",
+    "formula_name",
+    "vendor",
+    "kcal_per_ml",
+    "protein_g_per_100ml",
+    "fiber_g_per_100ml",
+    "osmolality_mOsmL",
+    "rate_ml_h",
+    "hours_per_day",
+    "volume_ml_day",
+    "kcal_day",
+    "protein_g_day",
+    "carbohydrate_g_day",
+    "fiber_g_day",
+    "lipid_g_day",
+    "day7_target_kcal",
+    "day7_target_protein_g",
+    "day7_target_carbohydrate_g",
+    "route",
+    "notes",
+]
+
+
+def normalize_infusion_records(df: pd.DataFrame) -> pd.DataFrame:
+    """既存CSVに列を追加し、保存時の列順を固定する。"""
+    out = df.copy()
+    for col in INFUSION_RECORD_COLUMNS:
+        if col not in out.columns:
+            out[col] = np.nan
+    for col in ("route", "notes"):
+        if col in out.columns:
+            out[col] = out[col].apply(lambda x: "" if pd.isna(x) else str(x))
+    return out[INFUSION_RECORD_COLUMNS]
+
+
 def load_formulas() -> pd.DataFrame:
+    """data_formulas.csv を毎回読み込む（マスタ更新を即時反映するためキャッシュしない）。"""
     df = pd.read_csv("data_formulas.csv")
     numeric_cols = ["kcal_per_ml", "protein_g_per_100ml", "fiber_g_per_100ml", "osmolality_mOsmL"]
     for c in numeric_cols:
@@ -59,44 +116,59 @@ def apply_formula_settings(formulas: pd.DataFrame, settings_df: pd.DataFrame) ->
     return formulas[formulas["name"].isin(enabled_names)].copy()
 
 
+def _formula_checkbox_key(name: str) -> str:
+    return "fc_" + hashlib.sha256(str(name).encode("utf-8")).hexdigest()
+
+
+def _coerce_setting_enabled(val: object) -> bool:
+    if isinstance(val, (bool, np.bool_)):
+        return bool(val)
+    if val is None or (isinstance(val, float) and np.isnan(val)):
+        return True
+    s = str(val).strip().lower()
+    return s in {"1", "true", "yes", "y"}
+
+
+def init_formula_checkbox_session(formulas_df: pd.DataFrame, settings_df: pd.DataFrame) -> None:
+    """採用製剤チェックのセッション初期値を、マスタと保存済み設定から補完する。"""
+    en_map = {str(r["name"]): _coerce_setting_enabled(r["enabled"]) for _, r in settings_df.iterrows()}
+    for nm in formulas_df["name"].astype(str).tolist():
+        k = _formula_checkbox_key(nm)
+        if k not in st.session_state:
+            st.session_state[k] = bool(en_map.get(nm, True))
+
+
+def collect_formula_settings_from_session(formulas_df: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for nm in formulas_df["name"].astype(str).tolist():
+        k = _formula_checkbox_key(nm)
+        rows.append({"name": nm, "enabled": bool(st.session_state.get(k, True))})
+    return pd.DataFrame(rows)
+
+
 def load_infusion_records() -> pd.DataFrame:
     try:
         df = pd.read_csv(INFUSION_RECORD_FILE)
     except FileNotFoundError:
-        return pd.DataFrame(
-            columns=[
-                "patient_id",
-                "record_date",
-                "icu_day",
-                "formula_name",
-                "rate_ml_h",
-                "hours_per_day",
-                "volume_ml_day",
-                "kcal_day",
-                "protein_g_day",
-                "carbohydrate_g_day",
-                "day7_target_kcal",
-            ]
-        )
-    if "day7_target_kcal" not in df.columns:
-        df["day7_target_kcal"] = np.nan
-    return df
+        return pd.DataFrame(columns=INFUSION_RECORD_COLUMNS)
+    return normalize_infusion_records(df)
 
 
 def save_infusion_records(df: pd.DataFrame) -> None:
-    df.to_csv(INFUSION_RECORD_FILE, index=False)
+    normalize_infusion_records(df).to_csv(INFUSION_RECORD_FILE, index=False)
 
 
 def upsert_infusion_record(record: dict[str, object]) -> None:
     records = load_infusion_records()
     if records.empty:
-        updated = pd.DataFrame([record])
+        updated = normalize_infusion_records(pd.DataFrame([record]))
     else:
         is_same = (records["patient_id"].astype(str) == str(record["patient_id"])) & (
             records["record_date"].astype(str) == str(record["record_date"])
         )
         records = records.loc[~is_same].copy()
         updated = pd.concat([records, pd.DataFrame([record])], ignore_index=True)
+        updated = normalize_infusion_records(updated)
     save_infusion_records(updated)
 
 
@@ -113,6 +185,29 @@ def get_carbohydrate_per_100ml(formula_row: pd.Series) -> tuple[float, bool]:
     protein_g_per_100ml = float(formula_row["protein_g_per_100ml"])
     estimated_carbohydrate = max((kcal_per_100ml - protein_g_per_100ml * 4) / 4, 0.0)
     return estimated_carbohydrate, True
+
+
+def _sync_section4_from_planned_infusion(patient_id: str, planned_rate: float, planned_hours: float) -> tuple[str, str]:
+    """2.の注入予定が変わったときだけ 4. の投与速度・時間を同じ値へ更新（4.で上書きした値は、2.を変更するまで保持）。"""
+    kr = f"en_prev_planned_rate_{patient_id}"
+    kh = f"en_prev_planned_hours_{patient_id}"
+    ar = f"en_actual_rate_{patient_id}"
+    ah = f"en_actual_hours_{patient_id}"
+    pr, ph = float(planned_rate), float(planned_hours)
+    if kr not in st.session_state:
+        st.session_state[kr] = pr
+        st.session_state[kh] = ph
+        st.session_state[ar] = pr
+        st.session_state[ah] = ph
+    else:
+        prev_r = float(st.session_state[kr])
+        prev_h = float(st.session_state[kh])
+        if abs(prev_r - pr) > 1e-9 or abs(prev_h - ph) > 1e-9:
+            st.session_state[ar] = pr
+            st.session_state[ah] = ph
+            st.session_state[kr] = pr
+            st.session_state[kh] = ph
+    return ar, ah
 
 
 def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None:
@@ -171,7 +266,7 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
         filtered = formulas.copy()
 
         if filtered.empty:
-            st.warning("設定ページで選択された製剤がありません。設定を確認してください。")
+            st.warning("採用製剤の設定で選択された製剤がありません。採用製剤の設定を確認してください。")
         else:
             filtered["必要量_mL_per_day"] = np.where(filtered["kcal_per_ml"] > 0, target_kcal / filtered["kcal_per_ml"], np.nan)
             filtered["たんぱく量_g_per_day_理論値"] = filtered["必要量_mL_per_day"] / 100 * filtered["protein_g_per_100ml"]
@@ -205,6 +300,7 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
 
             st.markdown("---")
             st.subheader("2. 現在の投与量")
+            st.caption(f"現在の入室日数（入室日を Day1 とする）: **Day{icu_stay_days}**")
             col_plan_rate, col_plan_hours = st.columns(2)
             with col_plan_rate:
                 planned_rate = st.number_input("注入予定速度 (mL/h)", min_value=0.0, value=50.0, step=5.0)
@@ -217,29 +313,53 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
             carbohydrate_per_100ml, is_estimated_carb = get_carbohydrate_per_100ml(selected_row)
             planned_carbohydrate = planned_volume / 100 * carbohydrate_per_100ml
 
+            day7_target_ratio = st.number_input(
+                "Day7時点の投与目標（ガイドライン必要量に対する達成率・%）",
+                min_value=0.0,
+                max_value=150.0,
+                value=100.0,
+                step=5.0,
+                help="「栄養必要量（目標）」で算定したエネルギー・たんぱく必要量（ガイドライン上の理想）に対し、"
+                "Day7 終了時点で投与でその何％ぶんを満たしたいかを指定します。",
+            )
+            day7_target_kcal = target_kcal * day7_target_ratio / 100 if target_kcal > 0 else 0.0
+            day7_volume_target = day7_target_kcal / selected_row["kcal_per_ml"] if selected_row["kcal_per_ml"] > 0 else 0.0
+            day7_protein_target = day7_volume_target / 100 * selected_row["protein_g_per_100ml"]
+            day7_carb_target = day7_volume_target / 100 * carbohydrate_per_100ml
+            st.caption(
+                f"Day7 の目標エネルギー: **{day7_target_kcal:.0f} kcal/day**（ガイドライン必要量の {day7_target_ratio:.0f}% に相当）"
+            )
+
             result_df = pd.DataFrame(
                 {
-                    "項目": ["投与量予定", "エネルギー", "たんぱく質", "糖質"],
-                    "値": [
+                    "項目": ["投与量", "エネルギー", "たんぱく質", "糖質"],
+                    "現在の投与予定": [
                         f"{planned_volume:.0f} mL/day",
                         f"{planned_kcal:.0f} kcal/day",
                         f"{planned_protein:.1f} g/day",
                         f"{planned_carbohydrate:.1f} g/day",
                     ],
+                    "Day7時点の目標": [
+                        f"{day7_volume_target:.0f} mL/day",
+                        f"{day7_target_kcal:.0f} kcal/day",
+                        f"{day7_protein_target:.1f} g/day",
+                        f"{day7_carb_target:.1f} g/day",
+                    ],
                 }
             )
             st.table(result_df)
             if is_estimated_carb:
-                st.caption("※ 糖質量は製剤データに糖質列がないため、エネルギーとたんぱく質量からの推定値です。")
+                st.caption("※ 糖質量は製剤データに糖質列がないため、エネルギーとたんぱく質量からの推定値です（Day7 目標の糖質も同様）。")
 
             st.markdown("---")
             st.subheader("3. 注入スケジュール（Day1〜Day7）")
+            st.caption(
+                "各 Day の「必要量達成率」は、いずれも **ガイドライン上の必要量（エネルギー目標）に対する達成率（%）** です。"
+                "Day1 は現在の注入予定量から、Day7 は上で設定した目標率まで線形補間します。"
+            )
             start_ratio = (planned_kcal / target_kcal * 100) if target_kcal > 0 else 0.0
             start_ratio = max(0.0, min(150.0, start_ratio))
-            st.caption(f"Day1開始達成率は注入予定量から自動設定: {start_ratio:.0f}%")
-            day7_target_ratio = st.number_input("Day7 目標達成率 (%)", min_value=0.0, max_value=150.0, value=100.0, step=5.0)
-            day7_target_kcal = target_kcal * day7_target_ratio / 100 if target_kcal > 0 else 0.0
-            st.caption(f"Day7 目標エネルギー: {day7_target_kcal:.0f} kcal/day")
+            st.caption(f"Day1 開始時点の達成率（注入予定から自動）: **{start_ratio:.0f}%**（ガイドライン必要量に対する割合）")
             day_labels = [f"Day{i}" for i in range(1, 8)]
             day_ratios = [float(start_ratio)] * 7 if day7_target_ratio == start_ratio else np.linspace(start_ratio, day7_target_ratio, num=7).tolist()
             hours_per_day = st.number_input("1日の注入時間 (h)", min_value=4, max_value=24, value=24, step=1)
@@ -255,7 +375,7 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
             plan_df = pd.DataFrame(
                 {
                     "Day": day_labels,
-                    "プロトコル目標達成率_%": day_ratios,
+                    "必要量達成率_%（ガイドライン比）": day_ratios,
                     "予定エネルギー_kcal": [p["kcal"] for p in plans],
                     "予定総量_mL": [p["volume"] for p in plans],
                     "予定速度_mL_per_h": [p["rate"] for p in plans],
@@ -273,7 +393,7 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
             st.dataframe(
                 plan_df.style.format(
                     {
-                        "プロトコル目標達成率_%": "{:.0f}",
+                        "必要量達成率_%（ガイドライン比）": "{:.0f}",
                         "予定エネルギー_kcal": "{:.0f}",
                         "予定総量_mL": "{:.0f}",
                         "予定速度_mL_per_h": "{:.0f}",
@@ -285,12 +405,32 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
 
             st.markdown("---")
             st.subheader("4. 本日の投与予定量")
+            st.caption(
+                "「2. 現在の投与量」の**注入予定速度・注入予定時間**を初期値として反映します。"
+                "2. を変更するとここへ自動で上書きされるので、本日だけ異なる値にしたい場合はこの欄で調整してください。"
+            )
+            ar_key, ah_key = _sync_section4_from_planned_infusion(patient_id, planned_rate, planned_hours)
             col_cd1, col_cd2 = st.columns(2)
             with col_cd1:
                 current_day = min(7, max(1, icu_stay_days))
                 st.write(f"現在の Day: **Day{current_day}**")
-                actual_rate = st.number_input("現在の投与速度 (mL/h)", min_value=0.0, value=50.0, step=5.0)
-                actual_hours = st.number_input("本日の実際の投与時間 (h/day)", min_value=0.0, max_value=24.0, value=float(hours_per_day), step=1.0)
+                actual_rate = st.number_input(
+                    "現在の投与速度 (mL/h)",
+                    min_value=0.0,
+                    value=float(st.session_state[ar_key]),
+                    key=ar_key,
+                    step=5.0,
+                    help="初期値は 2. の注入予定速度。2. を変更すると自動反映されます。",
+                )
+                actual_hours = st.number_input(
+                    "本日の実際の投与時間 (h/day)",
+                    min_value=0.0,
+                    max_value=24.0,
+                    value=float(st.session_state[ah_key]),
+                    key=ah_key,
+                    step=1.0,
+                    help="初期値は 2. の注入予定時間。3. のスケジュール用「1日の注入時間」とは別です。",
+                )
             with col_cd2:
                 st.markdown("**禁忌・注意状態チェック（目安）**")
                 contraindication_options = [
@@ -337,9 +477,6 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
                 st.metric("実エネルギー vs 目標（差）", f"{gap_kcal:+.0f} kcal/day")
 
             st.markdown("**現在値と目標値の見える化**")
-            day7_volume_target = day7_target_kcal / selected_row["kcal_per_ml"] if selected_row["kcal_per_ml"] > 0 else 0.0
-            day7_protein_target = day7_volume_target / 100 * selected_row["protein_g_per_100ml"]
-            day7_carb_target = day7_volume_target / 100 * carb_per_100ml_actual
             compare_df = pd.DataFrame(
                 {
                     "項目": ["投与量 (mL/day)", "エネルギー (kcal/day)", "たんぱく質 (g/day)", "糖質 (g/day)", "達成率 (%)"],
@@ -428,47 +565,106 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
                 chart_df = time_series_df.reset_index().rename(columns={"index": "Day"})
                 long_df = chart_df.melt(id_vars="Day", var_name="系列", value_name="値").dropna(subset=["値"])
 
+                ts_color = alt.Color(
+                    "系列:N",
+                    title="成分",
+                    scale=alt.Scale(domain=TS_SERIES_COLOR_DOMAIN, range=TS_SERIES_COLOR_RANGE),
+                    legend=alt.Legend(orient="top", titleFontSize=12, labelFontSize=11),
+                )
+
                 line = (
                     alt.Chart(long_df)
-                    .mark_line(point=True)
+                    .mark_line(point=True, strokeWidth=2)
                     .encode(
-                        x=alt.X("Day:N", title="Day"),
+                        x=alt.X("Day:N", title="Day", sort=None),
                         y=alt.Y("値:Q", title="値"),
-                        color=alt.Color("系列:N", title="系列"),
+                        color=ts_color,
                     )
                 )
                 labels = (
                     alt.Chart(long_df)
                     .mark_text(dy=-10, fontSize=11)
                     .encode(
-                        x=alt.X("Day:N"),
+                        x=alt.X("Day:N", sort=None),
                         y=alt.Y("値:Q"),
                         text=alt.Text("値:Q", format=".1f"),
-                        color=alt.Color("系列:N", legend=None),
+                        color=alt.Color(
+                            "系列:N",
+                            scale=alt.Scale(domain=TS_SERIES_COLOR_DOMAIN, range=TS_SERIES_COLOR_RANGE),
+                            legend=None,
+                        ),
                     )
                 )
                 st.altair_chart((line + labels).interactive(), use_container_width=True)
+                st.caption(
+                    "色の対応: **赤系＝エネルギー** / **青系＝たんぱく質** / **緑系＝糖質**（濃＝実測、淡＝Day7目標）。"
+                    " 下表でも同じ列順で確認できます。"
+                )
                 st.caption("グラフ値（カーソル不要で確認可能）")
+                _col_order = [c for c in TS_SERIES_COLOR_DOMAIN if c in time_series_df.columns]
+                _rest = [c for c in time_series_df.columns if c not in _col_order]
+                _display_ts = time_series_df[_col_order + _rest]
                 st.dataframe(
-                    time_series_df.style.format("{:.1f}"),
+                    _display_ts.style.format("{:.1f}"),
                     use_container_width=True,
                 )
             else:
                 st.info("この患者の投与記録はまだありません。下のボタンで本日の計画を記録できます。")
 
+            hist_all = load_infusion_records()
+            hist_pat = hist_all[hist_all["patient_id"].astype(str) == str(patient_id)]
+            if not hist_pat.empty:
+                with st.expander("この患者の保存済み投与記録（製剤スナップショット含む）"):
+                    st.dataframe(hist_pat, use_container_width=True)
+
+            st.markdown("**投与記録に付与する情報（任意）**")
+            st.caption("マスタにない製剤や併用などは備考に記載できます。保存時に製剤組成のスナップショットも記録されます。")
+            col_rw, col_rn = st.columns(2)
+            with col_rw:
+                route_options = ["未入力", "経鼻胃管", "経口胃管", "経鼻空腸", "経口空腸", "経口", "その他"]
+                route_sel = st.selectbox("投与経路", route_options, key=f"route_rec_{patient_id}")
+            with col_rn:
+                notes_rec = st.text_area(
+                    "備考（希釈・併用・マスタ外製剤名・ロット等）",
+                    value="",
+                    key=f"notes_rec_{patient_id}",
+                    height=72,
+                )
+
             if st.button("この計画で投与を実施する", use_container_width=True):
+                fiber_per_100ml = float(selected_row["fiber_g_per_100ml"]) if pd.notna(selected_row.get("fiber_g_per_100ml")) else 0.0
+                fiber_g_day = actual_volume_today / 100.0 * fiber_per_100ml
+                protein_g_day_val = actual_volume_today / 100.0 * float(selected_row["protein_g_per_100ml"])
+                lipid_g_day = max(
+                    0.0,
+                    (float(actual_kcal_today) - protein_g_day_val * 4.0 - float(actual_carb_today) * 4.0) / 9.0,
+                )
+                osmolality_val = selected_row.get("osmolality_mOsmL")
+                osmolality_val = float(osmolality_val) if osmolality_val is not None and pd.notna(osmolality_val) else np.nan
+                route_saved = "" if route_sel == "未入力" else route_sel
                 record = {
                     "patient_id": patient_id,
                     "record_date": today.isoformat(),
                     "icu_day": current_day,
                     "formula_name": selected_row["name"],
+                    "vendor": selected_row["vendor"],
+                    "kcal_per_ml": float(selected_row["kcal_per_ml"]),
+                    "protein_g_per_100ml": float(selected_row["protein_g_per_100ml"]),
+                    "fiber_g_per_100ml": fiber_per_100ml,
+                    "osmolality_mOsmL": osmolality_val,
                     "rate_ml_h": actual_rate,
                     "hours_per_day": actual_hours,
                     "volume_ml_day": actual_volume_today,
                     "kcal_day": actual_kcal_today,
-                    "protein_g_day": actual_volume_today / 100 * selected_row["protein_g_per_100ml"],
+                    "protein_g_day": protein_g_day_val,
                     "carbohydrate_g_day": actual_carb_today,
+                    "fiber_g_day": fiber_g_day,
+                    "lipid_g_day": lipid_g_day,
                     "day7_target_kcal": day7_target_kcal,
+                    "day7_target_protein_g": float(day7_protein_target),
+                    "day7_target_carbohydrate_g": float(day7_carb_target),
+                    "route": route_saved,
+                    "notes": notes_rec.strip(),
                 }
                 upsert_infusion_record(record)
                 st.success(f"Day{current_day} の投与記録を保存しました。")
@@ -490,17 +686,20 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
                 if ideal_gap_kcal < 0:
                     suggestions.append(
                         f"現時点では同Day理想目標より {abs(ideal_gap_kcal):.0f} kcal/day 不足しています。"
-                        f"翌日は目標達成率 {proto_ratio_tomorrow:.0f}% を目安に増量を検討してください。"
+                        f"翌日はガイドライン必要量に対する達成率 **{proto_ratio_tomorrow:.0f}%** を目安に増量を検討してください。"
                     )
                 elif ideal_gap_kcal > 0:
                     suggestions.append(
                         f"現時点では同Day理想目標より {ideal_gap_kcal:.0f} kcal/day 上回っています。"
-                        f"翌日は目標達成率 {proto_ratio_tomorrow:.0f}% を目安に過量投与へ注意してください。"
+                        f"翌日はガイドライン必要量に対する達成率 **{proto_ratio_tomorrow:.0f}%** を目安に過量投与へ注意してください。"
                     )
                 else:
                     suggestions.append("現時点で同Day理想目標と一致しています。翌日も同プロトコルで継続可能です。")
                 rec_plan_tomorrow = plan_for_ratio(rec_ratio_tomorrow)
-                st.write(f"- 翌日の推奨エネルギー: 約 {rec_plan_tomorrow['kcal']:.0f} kcal/day（{rec_ratio_tomorrow:.0f}%）")
+                st.write(
+                    f"- 翌日の推奨エネルギー: 約 {rec_plan_tomorrow['kcal']:.0f} kcal/day"
+                    f"（ガイドライン必要量に対する達成率 {rec_ratio_tomorrow:.0f}% 相当）"
+                )
                 st.write(f"- 翌日の推奨総量・速度: 約 {rec_plan_tomorrow['volume']:.0f} mL/day, {rec_plan_tomorrow['rate']:.0f} mL/h")
             else:
                 if day7_target_kcal > 0 and actual_kcal_today < day7_target_kcal:
@@ -571,34 +770,109 @@ def render_strategy_page(patient_row: pd.Series, formulas: pd.DataFrame) -> None
         st.dataframe(formulas, use_container_width=True)
 
 
-def main() -> None:
-    st.set_page_config(page_title="EN-supporter", layout="wide")
-    st.title("EN-supporter")
+MOBILE_FRIENDLY_CSS = """
+<style>
+    /* スマホ向け: タップ領域・文字サイズ（iOSフォーカス時の自動ズーム防止に16px以上） */
+    .block-container { padding-left: max(16px, env(safe-area-inset-left)) !important;
+                       padding-right: max(16px, env(safe-area-inset-right)) !important; }
+    .stButton > button, button[kind="secondary"], [data-testid="baseButton-secondary"] {
+        min-height: 48px !important;
+        padding: 12px 18px !important;
+        font-size: 1.05rem !important;
+        border-radius: 12px !important;
+        -webkit-tap-highlight-color: transparent;
+    }
+    [data-testid="stFormSubmitButton"] > button {
+        min-height: 48px !important;
+        padding: 12px 18px !important;
+        font-size: 1.05rem !important;
+        border-radius: 12px !important;
+    }
+    .stCheckbox label, .stRadio label, .stSelectbox label, .stNumberInput label,
+    .stTextInput label, .stDateInput label, .stTextArea label { font-size: 1rem !important; }
+    .stCheckbox { padding: 6px 0 !important; }
+    input, textarea, [data-baseweb="select"] > div {
+        min-height: 44px !important;
+        font-size: 16px !important;
+    }
+</style>
+"""
 
-    formulas = load_formulas()
-    formula_settings = load_formula_settings(formulas)
-    filtered_formulas = apply_formula_settings(formulas, formula_settings)
-    patients = load_patients()
+# 先頭行のホームボタンをビューポート右上に固定（先頭行以外の横並びは狭い画面で縦積み）
+HOME_HEADER_CSS = """
+<style>
+    section.main .block-container div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:last-of-type {
+        position: fixed !important;
+        top: calc(0.5rem + env(safe-area-inset-top, 0px)) !important;
+        right: max(0.5rem, env(safe-area-inset-right, 0px)) !important;
+        z-index: 1000020 !important;
+        width: auto !important;
+        min-width: 6.5rem !important;
+        max-width: 46vw !important;
+        flex: 0 0 auto !important;
+        padding: 0.15rem 0.35rem !important;
+        background: rgba(255, 255, 255, 0.97) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1) !important;
+    }
+    section.main .block-container div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"]:first-of-type {
+        padding-right: 5.75rem !important;
+    }
+    @media (max-width: 640px) {
+        section.main .block-container div[data-testid="stHorizontalBlock"]:first-of-type {
+            flex-direction: row !important;
+            align-items: flex-start !important;
+        }
+        section.main .block-container div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] {
+            width: auto !important;
+            min-width: 0 !important;
+        }
+        section.main .block-container div[data-testid="stHorizontalBlock"]:not(:first-of-type) {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+        }
+        section.main .block-container div[data-testid="stHorizontalBlock"]:not(:first-of-type) > div[data-testid="column"] {
+            width: 100% !important;
+            min-width: 100% !important;
+            flex: 1 1 auto !important;
+        }
+    }
+</style>
+"""
+
+
+def main() -> None:
+    st.set_page_config(page_title="EN-supporter", layout="wide", initial_sidebar_state="collapsed")
+    st.markdown(MOBILE_FRIENDLY_CSS + HOME_HEADER_CSS, unsafe_allow_html=True)
 
     if "page" not in st.session_state:
         st.session_state.page = "top"
     if "selected_patient_id" not in st.session_state:
         st.session_state.selected_patient_id = None
 
+    title_col, home_col = st.columns([5, 1])
+    with title_col:
+        st.title("EN-supporter")
+    with home_col:
+        if st.button("ホーム", key="en_nav_home", use_container_width=True, help="トップへ"):
+            st.session_state.page = "top"
+            st.rerun()
+
+    formulas = load_formulas()
+    formula_settings = load_formula_settings(formulas)
+    filtered_formulas = apply_formula_settings(formulas, formula_settings)
+    patients = load_patients()
+
     if st.session_state.page == "top":
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            if st.button("新規患者を登録する", use_container_width=True):
-                st.session_state.page = "register"
-                st.rerun()
-        with col2:
-            if st.button("登録済み患者で戦略立案", use_container_width=True):
-                st.session_state.page = "strategy_select"
-                st.rerun()
-        with col3:
-            if st.button("設定ページ", use_container_width=True):
-                st.session_state.page = "settings"
-                st.rerun()
+        if st.button("新規患者を登録する", use_container_width=True):
+            st.session_state.page = "register"
+            st.rerun()
+        if st.button("登録済み患者で戦略立案", use_container_width=True):
+            st.session_state.page = "strategy_select"
+            st.rerun()
+        if st.button("採用製剤の設定", use_container_width=True):
+            st.session_state.page = "settings"
+            st.rerun()
         return
 
     if st.session_state.page == "register":
@@ -608,7 +882,7 @@ def main() -> None:
             today = st.date_input("本日の日付", value=date.today())
             height_cm = st.number_input("身長 (cm)", min_value=100.0, max_value=220.0, value=170.0, step=0.5)
             weight_kg = st.number_input("体重 (kg)", min_value=20.0, max_value=200.0, value=60.0, step=0.5)
-            submitted = st.form_submit_button("患者を登録")
+            submitted = st.form_submit_button("患者を登録", use_container_width=True, type="primary")
 
         if submitted:
             if not patient_id.strip():
@@ -639,8 +913,8 @@ def main() -> None:
             st.warning("登録済み患者がいません。先に新規患者を登録してください。")
             return
         if filtered_formulas.empty:
-            st.warning("設定ページで採用製剤が1つも選択されていません。先に設定してください。")
-            if st.button("設定ページへ移動", use_container_width=True):
+            st.warning("採用製剤の設定で採用製剤が1つも選択されていません。先に採用製剤の設定を行ってください。")
+            if st.button("採用製剤の設定へ移動", use_container_width=True):
                 st.session_state.page = "settings"
                 st.rerun()
             return
@@ -682,35 +956,61 @@ def main() -> None:
             return
 
         selected_patient = target.iloc[0]
-        col_back, _ = st.columns(2)
-        with col_back:
-            if st.button("患者選択へ戻る", use_container_width=True):
-                st.session_state.page = "strategy_select"
-                st.rerun()
+        if st.button("患者選択へ戻る", use_container_width=True):
+            st.session_state.page = "strategy_select"
+            st.rerun()
 
         st.markdown("---")
         render_strategy_page(selected_patient, filtered_formulas)
         return
 
     if st.session_state.page == "settings":
-        st.subheader("設定ページ")
-        st.caption("施設で採用している製剤にチェックを入れて保存してください。戦略立案ではチェック済み製剤のみ使用します。")
-
-        edit_df = formula_settings.copy()
-        edited = st.data_editor(
-            edit_df,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "name": st.column_config.TextColumn("製剤名", disabled=True),
-                "vendor": st.column_config.TextColumn("メーカー", disabled=True),
-                "enabled": st.column_config.CheckboxColumn("施設採用", default=True),
-            },
+        st.subheader("採用製剤の設定")
+        st.caption(
+            "`data_formulas.csv` に登録されている全製剤を以下に表示します。"
+            "施設で採用する製剤にチェックを入れて保存してください。戦略立案ではチェック済み製剤のみ使用します。"
         )
 
+        init_formula_checkbox_session(formulas, formula_settings)
+
+        if st.button("すべて採用", use_container_width=True):
+            for nm in formulas["name"].astype(str).tolist():
+                st.session_state[_formula_checkbox_key(nm)] = True
+            st.rerun()
+        if st.button("すべて解除", use_container_width=True):
+            for nm in formulas["name"].astype(str).tolist():
+                st.session_state[_formula_checkbox_key(nm)] = False
+            st.rerun()
+
+        st.caption(f"登録製剤数: **{len(formulas)}**（メーカー別に折りたたみ表示）")
+
+        display_cols = ["name", "vendor", "kcal_per_ml", "protein_g_per_100ml", "fiber_g_per_100ml", "osmolality_mOsmL"]
+        display_cols = [c for c in display_cols if c in formulas.columns]
+
+        for vendor in sorted(formulas["vendor"].dropna().astype(str).unique()):
+            sub = formulas[formulas["vendor"].astype(str) == vendor].sort_values("name").reset_index(drop=True)
+            n = len(sub)
+            with st.expander(f"{vendor}（{n}製剤）", expanded=(n <= 8)):
+                for _, row in sub.iterrows():
+                    nm = str(row["name"])
+                    k = _formula_checkbox_key(nm)
+                    hparts: list[str] = []
+                    if "kcal_per_ml" in row.index and pd.notna(row["kcal_per_ml"]):
+                        hparts.append(f"{float(row['kcal_per_ml']):.2f} kcal/mL")
+                    if "protein_g_per_100ml" in row.index and pd.notna(row["protein_g_per_100ml"]):
+                        hparts.append(f"たんぱく {float(row['protein_g_per_100ml']):.1f} g/100mL")
+                    if "notes" in row.index and pd.notna(row["notes"]) and str(row["notes"]).strip():
+                        hparts.append(str(row["notes"])[:180])
+                    help_txt = " | ".join(hparts) if hparts else None
+                    st.checkbox(nm, key=k, help=help_txt)
+
         if st.button("設定を保存", use_container_width=True):
+            edited = collect_formula_settings_from_session(formulas)
             save_formula_settings(edited)
-            st.success("設定を保存しました。")
+            st.success(f"設定を保存しました（採用 {int(edited['enabled'].sum())} 件）。")
+
+        with st.expander("製剤マスタ一覧（参照）"):
+            st.dataframe(formulas[display_cols], use_container_width=True, hide_index=True)
 
         if st.button("トップへ戻る", use_container_width=True):
             st.session_state.page = "top"
