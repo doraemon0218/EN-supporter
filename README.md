@@ -9,6 +9,16 @@ Vercel デプロイ向けに、`FastAPI + 静的フロントエンド` 構成に
 - `public/index.html`: フロントエンド（画面・計算ロジック）
 - `data_formulas.csv`: 製剤マスタ
 - `vercel.json`: Vercelルーティング設定
+- `app.py`: **Streamlit** 版（機能が多い。ローカルや Streamlit Cloud 向け。**Vercel 本番には含まれません**）
+
+## 本番（Vercel）とローカルで画面が違うとき
+
+`vercel.json` では **`api/index.py` と `public/` の静的ファイルだけ** がデプロイ対象です。  
+そのため **`streamlit run app.py` で見ている画面は Vercel には反映されません。** 本番 URL は **`public/index.html` ベースの軽量版**です。
+
+- **Vercel 上の見た目・挙動を変えたい:** `public/index.html`（必要なら `api/index.py`）を編集し、`main` に push する（Git 連携が有効なら自動デプロイ）。
+- **Streamlit 版をクラウドで使いたい:** [Streamlit Community Cloud](https://streamlit.io/cloud) など、Streamlit 用のホスティングを別途用意する（Vercel だけでは `app.py` は動かしません）。
+- push 済みなのに本番が古い: Vercel ダッシュボードで対象プロジェクトが **この GitHub リポジトリ・`main` ブランチ** と紐づいているか確認し、「Redeploy」やキャッシュクリア、ブラウザのスーパーリロードを試してください。
 
 ## ローカル実行
 
