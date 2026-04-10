@@ -24,6 +24,8 @@ def health() -> dict[str, str]:
 
 @app.get("/api/formulas")
 def formulas() -> list[dict]:
+    if not FORMULA_FILE.is_file():
+        return []
     df = pd.read_csv(FORMULA_FILE)
     numeric_cols = ["kcal_per_ml", "protein_g_per_100ml", "fiber_g_per_100ml", "osmolality_mOsmL"]
     for col in numeric_cols:

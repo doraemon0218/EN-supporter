@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "builds": [
     {
       "src": "api/index.py",
@@ -15,8 +16,12 @@
       "dest": "/api/index.py"
     },
     {
-      "src": "/(.*)",
-      "dest": "/public/index.html"
+      "handle": "filesystem"
     }
-  ]
+  ],
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "data_formulas.csv"
+    }
+  }
 }

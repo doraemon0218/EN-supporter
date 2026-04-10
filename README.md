@@ -78,6 +78,8 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
+Vercel の Python 関数は **`api/requirements.txt`**（軽量）を参照します。ルートの `requirements.txt` は Streamlit 用の依存を含みます。
+
 ## ローカル実行（Vercel 構成の確認用）
 
 API:
@@ -86,6 +88,7 @@ API:
 pip install -r requirements.txt
 uvicorn api.index:app --reload --port 8000
 ```
+
 
 別ターミナルで静的ファイル:
 

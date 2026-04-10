@@ -82,7 +82,7 @@
 
     const ROUTE_OPTIONS = ["未入力", "経鼻胃管", "経口胃管", "経鼻空腸", "経口空腸", "経口", "その他"];
 
-    const state = { page: "top", selectedPatientId: null, formulas: [] };
+    const state = { page: "top", selectedPatientId: null, formulas: [], apiError: null };
     const app = document.getElementById("app");
     let __enChart = null;
 
@@ -145,8 +145,18 @@
     }
 
     async function fetchFormulas() {
-      const res = await fetch("/api/formulas");
-      state.formulas = await res.json();
+      state.apiError = null;
+      try {
+        const res = await fetch("/api/formulas");
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const data = await res.json();
+        state.formulas = Array.isArray(data) ? data : [];
+      } catch (e) {
+        console.error(e);
+        state.formulas = [];
+        state.apiError =
+          "製剤データ（/api/formulas）を取得できませんでした。Vercel の Functions ログを確認するか、再読み込みしてください。";
+      }
     }
 
     function getEnabledFormulas() {
@@ -171,7 +181,11 @@
     window.go = go;
 
     function renderTop() {
+      const warn = state.apiError
+        ? `<div class="card" style="background:#fef2f2;border:1px solid #fecaca"><p><strong>接続エラー</strong></p><p class="muted">${esc(state.apiError)}</p></div>`
+        : "";
       app.innerHTML = `
+        ${warn}
         <div class="card"><h1>EN-supporter</h1></div>
         <div class="card" style="display:flex;flex-direction:column;gap:12px;max-width:420px;">
           <button type="button" onclick="go('register')">新規患者を登録する</button>
@@ -1048,8 +1062,11 @@
     })();
 
     (async function init() {
-      await fetchFormulas();
-      render();
+      try {
+        await fetchFormulas();
+      } finally {
+        render();
+      }
     })();
   </script>
 </body>
