@@ -39,14 +39,14 @@
 
 | 本番の種類 | 中身 | `main` に push すると |
 |------------|------|------------------------|
-| **Vercel** | `public/index.html` + `api/index.py` + `data_formulas.csv` など | 上記 A または B で自動反映 |
+| **Vercel** | ルートの `index.html` + `api/index.py` + `data_formulas.csv` など | 上記 A または B で自動反映 |
 | **Streamlit Community Cloud**（任意・フル機能） | `app.py` + 同梱 CSV | Cloud に接続済みなら自動再デプロイ |
 
 **Vercel 上では Streamlit は動きません。** フル機能を URL で出す場合は **Streamlit Community Cloud** を別途接続してください。
 
 ### いつもの手順（ローカル → commit → 本番）
 
-1. **`app.py`** を編集（必要なら `data_formulas.csv` や `public/index.html` も）。  
+1. **`app.py`** を編集（必要なら `data_formulas.csv` や ルートの `index.html` も）。  
 2. ローカル確認: `pip install -r requirements.txt` のうえ `streamlit run app.py`  
 3. **commit して `main` に push** → Vercel が（A または B で）更新  
 4. Streamlit Cloud を使っている場合は、同じ push で **Cloud 側も**更新される
@@ -57,13 +57,13 @@
 2. GitHub リポジトリ **このプロジェクト** を選択
 3. **Main file path**: `app.py`、**Branch**: `main`
 4. デプロイ完了後に表示される URL（例: `https://xxx.streamlit.app`）を控える
-5. （任意）`public/index.html` 内の **`STREAMLIT_APP_URL`** にその URL を貼り、push すると Vercel の軽量版からフル版へリンクが出ます
+5. （任意）ルートの **`index.html`** 内の **`STREAMLIT_APP_URL`** にその URL を貼り、push すると Vercel の軽量版からフル版へリンクが出ます
 
 ## 構成
 
 - **`app.py`**: Streamlit 版（**本番フル機能の正**）
 - **`api/index.py`**: FastAPI（製剤 API、`/api/formulas`）
-- **`public/index.html`**: Vercel 向け軽量フロント（`localStorage` 利用）
+- **`index.html`**（リポジトリ直下）: Vercel 向け軽量フロント（`localStorage` 利用）
 - **`data_formulas.csv`**: 製剤マスタ（API・Streamlit 双方で参照）
 - **`vercel.json`**: Vercel ルーティング
 - **`.github/workflows/deploy-vercel.yml`**: （任意）Actions 経由で Vercel 本番へデプロイ
@@ -96,7 +96,7 @@ uvicorn api.index:app --reload --port 8000
 python -m http.server 3000
 ```
 
-ブラウザで `http://localhost:3000/public/index.html` を開きます。
+ブラウザで `http://localhost:3000/` または `http://localhost:3000/index.html` を開きます。
 
 ## Vercel CLI（手動デプロイ）
 

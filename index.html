@@ -59,6 +59,8 @@
   </style>
 </head>
 <body>
+  <noscript><p style="padding:16px;margin:0">JavaScriptを有効にしてください。</p></noscript>
+  <p id="boot-msg" style="padding:16px;margin:0;color:#334155">読み込み中…</p>
   <button type="button" id="global-home-btn" onclick="go('top')">ホーム</button>
   <div id="streamlit-full-app-bar" style="display:none" aria-hidden="true"></div>
   <div class="wrap" id="app"></div>
@@ -126,8 +128,8 @@
       return {
         evalToday: d.evalToday ?? p.today ?? today(),
         ward: d.ward ?? "ICU",
-        weight: d.weight ?? Number(p.weight_kg) || 60,
-        height: d.height ?? Number(p.height_cm) || 170,
+        weight: d.weight ?? (Number(p.weight_kg) || 60),
+        height: d.height ?? (Number(p.height_cm) || 170),
         kcalPerKg: d.kcalPerKg ?? 25,
         proteinPerKg: d.proteinPerKg ?? 1.2,
         plannedRate: d.plannedRate ?? 50,
@@ -1062,6 +1064,8 @@
     })();
 
     (async function init() {
+      const bm = document.getElementById("boot-msg");
+      if (bm) bm.remove();
       try {
         await fetchFormulas();
       } finally {

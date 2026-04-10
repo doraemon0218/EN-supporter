@@ -6,7 +6,7 @@
       "use": "@vercel/python"
     },
     {
-      "src": "public/**",
+      "src": "index.html",
       "use": "@vercel/static"
     }
   ],
@@ -17,6 +17,10 @@
     },
     {
       "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "functions": {
