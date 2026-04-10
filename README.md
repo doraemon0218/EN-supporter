@@ -7,20 +7,49 @@
 **ローカルで触っている `app.py`（Streamlit）が機能の最新版です。**  
 ここを主に編集し、GitHub の `main` に push して本番へ反映します。
 
+## GitHub に commit → Vercel に反映（本番の仕様）
+
+**`main` ブランチへ push すると、Vercel の本番が更新される**運用にします。次の **どちらか一方** を選んでください（両方有効にすると同じ push で二重デプロイになります）。
+
+### 方法 A: Vercel の Git 連携（推奨・手軽）
+
+1. [Vercel](https://vercel.com) にログイン → **Add New Project** → この GitHub リポジトリを選択  
+2. **Production Branch** を `main` にする  
+3. 以降は **commit → `main` へ push** だけで Vercel が自動ビルド・本番反映  
+
+追加の GitHub Secrets は不要です。
+
+### 方法 B: GitHub Actions からデプロイ（CI を明示したい場合）
+
+リポジトリに [`.github/workflows/deploy-vercel.yml`](.github/workflows/deploy-vercel.yml) を同梱しています。
+
+1. Vercel の **Account Settings → Tokens** でトークンを作成  
+2. Vercel プロジェクトの **Settings → General** で **Project ID**、チームの **Team ID（Org ID）** を控える  
+3. GitHub リポジトリ → **Settings → Secrets and variables → Actions** で次を登録  
+   - `VERCEL_TOKEN`  
+   - `VERCEL_ORG_ID`  
+   - `VERCEL_PROJECT_ID`  
+4. **Settings → Secrets and variables → Actions → Variables** で  
+   - `VERCEL_DEPLOY_VIA_ACTIONS` = `true`  
+5. **Vercel 側の「Git 連携による自動デプロイ」をオフ**にする（Actions と二重にならないように）
+
+`VERCEL_DEPLOY_VIA_ACTIONS` を `true` にしていない限り、このワークフローはスキップされ、他環境で CI が落ちません。
+
+---
+
 | 本番の種類 | 中身 | `main` に push すると |
 |------------|------|------------------------|
-| **Streamlit Community Cloud**（推奨・フル機能） | `app.py` + 同梱 CSV | 自動で再デプロイ（初回のみ Cloud でリポジトリ接続） |
-| **Vercel** | `public/index.html` + `api/index.py` + `data_formulas.csv` など | 自動で再デプロイ（Git 連携時） |
+| **Vercel** | `public/index.html` + `api/index.py` + `data_formulas.csv` など | 上記 A または B で自動反映 |
+| **Streamlit Community Cloud**（任意・フル機能） | `app.py` + 同梱 CSV | Cloud に接続済みなら自動再デプロイ |
 
-**Vercel 上では Streamlit は動きません。** フル機能を URL で出したい場合は、必ず **Streamlit Community Cloud** を併用してください（同じリポジトリでよい）。
+**Vercel 上では Streamlit は動きません。** フル機能を URL で出す場合は **Streamlit Community Cloud** を別途接続してください。
 
-### いつもの手順（ローカル開発 → 本番更新）
+### いつもの手順（ローカル → commit → 本番）
 
-1. 機能は **`app.py`** を編集（必要なら `data_formulas.csv` や `public/index.html` も）。
-2. ローカル確認: `pip install -r requirements.txt` のうえ `streamlit run app.py`
-3. コミットして **`main` に push**
-4. **Streamlit Cloud**: 接続済みなら数分で `app.py` 側が更新される  
-5. **Vercel**: `public/` や `api/`・CSV を変えていれば同じ push で反映される
+1. **`app.py`** を編集（必要なら `data_formulas.csv` や `public/index.html` も）。  
+2. ローカル確認: `pip install -r requirements.txt` のうえ `streamlit run app.py`  
+3. **commit して `main` に push** → Vercel が（A または B で）更新  
+4. Streamlit Cloud を使っている場合は、同じ push で **Cloud 側も**更新される
 
 ### Streamlit Community Cloud（初回だけ）
 
@@ -37,6 +66,7 @@
 - **`public/index.html`**: Vercel 向け軽量フロント（`localStorage` 利用）
 - **`data_formulas.csv`**: 製剤マスタ（API・Streamlit 双方で参照）
 - **`vercel.json`**: Vercel ルーティング
+- **`.github/workflows/deploy-vercel.yml`**: （任意）Actions 経由で Vercel 本番へデプロイ
 
 ## ローカル実行（Streamlit・最新版）
 
@@ -65,10 +95,9 @@ python -m http.server 3000
 
 ブラウザで `http://localhost:3000/public/index.html` を開きます。
 
-## Vercel デプロイ
+## Vercel CLI（手動デプロイ）
 
-GitHub とプロジェクトを接続していれば **`main` への push で自動デプロイ**されます。  
-CLI の場合:
+初回のみや検証用。通常は上記 **方法 A（Git 連携）** で十分です。
 
 ```bash
 npm i -g vercel
