@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 BASE_DIR = Path(__file__).resolve().parent.parent
 FORMULA_FILE = BASE_DIR / "data_formulas.csv"
 
-app = FastAPI(title="EN-supporter API")
+app = FastAPI(title="EN-supporter API", redirect_slashes=False)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
