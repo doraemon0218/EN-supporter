@@ -12,62 +12,137 @@
     .card { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
     .row { display: flex; gap: 12px; flex-wrap: wrap; }
     .row > * { flex: 1; min-width: min(100%, 180px); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
     button { border: none; background: #2563eb; color: #fff; border-radius: 12px; padding: 12px 18px; min-height: 48px;
       font-size: 1rem; cursor: pointer; width: 100%; touch-action: manipulation; }
     button.secondary { background: #64748b; }
-    input, select { width: 100%; padding: 10px 12px; min-height: 44px; font-size: 16px; border-radius: 8px; border: 1px solid #cbd5e1; }
+    button.tab-btn { width: auto; flex: 1; min-width: min(100%, 140px); background: #e2e8f0; color: #334155; }
+    button.tab-btn.active { background: #2563eb; color: #fff; }
+    input, select, textarea { width: 100%; padding: 10px 12px; min-height: 44px; font-size: 16px; border-radius: 8px; border: 1px solid #cbd5e1; }
+    textarea { min-height: 80px; resize: vertical; }
     .btn-stack { display: flex; flex-direction: column; gap: 10px; margin: 12px 0; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { padding: 8px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    table.data { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table.data th, table.data td { padding: 8px 6px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+    table.data th { background: #f8fafc; font-weight: 600; white-space: nowrap; }
+    .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 8px 0; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .table-scroll table { min-width: 520px; }
+    tr.row-current { background: #fff3cd; }
     .muted { color: #64748b; font-size: 13px; }
     .badge { display: inline-block; padding: 3px 8px; border-radius: 999px; background: #e0f2fe; font-size: 12px; }
+    h2 { font-size: 1.35rem; margin: 0 0 8px; }
+    h3 { font-size: 1.1rem; margin: 16px 0 8px; }
+    h4 { font-size: 1rem; margin: 12px 0 6px; }
     details.vendor-block { margin: 10px 0; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 12px; background: #fafbfc; }
     .formula-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 10px; }
     @media (max-width: 720px) { .formula-grid { grid-template-columns: 1fr; } }
     .formula-item label { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; cursor: pointer; min-height: 44px; }
     .formula-item input[type="checkbox"] { width: 22px; height: 22px; min-width: 22px; flex-shrink: 0; margin-top: 2px; }
     #global-home-btn {
-      position: fixed;
-      top: max(10px, env(safe-area-inset-top));
-      right: max(10px, env(safe-area-inset-right));
-      z-index: 10000;
-      width: auto;
-      min-width: 6.5rem;
-      max-width: 46vw;
-      padding: 10px 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.12);
-      background: #2563eb;
+      position: fixed; top: max(10px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); z-index: 10000;
+      width: auto; min-width: 6.5rem; max-width: 46vw; padding: 10px 16px; box-shadow: 0 2px 12px rgba(0,0,0,.12); background: #2563eb;
     }
-    #streamlit-full-app-bar {
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 10px 16px;
-      background: #eff6ff;
-      border-bottom: 1px solid #bfdbfe;
-      font-size: 14px;
-    }
+    #streamlit-full-app-bar { max-width: 980px; margin: 0 auto; padding: 10px 16px; background: #eff6ff; border-bottom: 1px solid #bfdbfe; font-size: 14px; }
     #streamlit-full-app-bar a { color: #1d4ed8; font-weight: 600; }
+    .tabs-nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+    @media (max-width: 640px) { .metric-row { grid-template-columns: 1fr; } }
+    .metric-box { background: #f8fafc; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; }
+    .metric-box .val { font-size: 1.25rem; font-weight: 700; }
+    .check-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; min-height: 44px; }
+    .check-row input { width: 22px; height: 22px; min-width: 22px; margin-top: 2px; }
+    #chart-wrap { position: relative; height: min(360px, 55vh); margin: 12px 0; }
+    hr.sep { border: none; border-top: 1px solid #e2e8f0; margin: 16px 0; }
+    label.lbl { display: block; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
   </style>
 </head>
 <body>
   <button type="button" id="global-home-btn" onclick="go('top')">ホーム</button>
   <div id="streamlit-full-app-bar" style="display:none" aria-hidden="true"></div>
   <div class="wrap" id="app"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script>
-    /** Streamlit Community Cloud のアプリ URL。デプロイ後にここへ貼ると、Vercel からフル版へ誘導できます。 */
     const STREAMLIT_APP_URL = "";
 
     const KEY_PATIENTS = "en_patients_v1";
     const KEY_SETTINGS = "en_formula_settings_v1";
     const KEY_RECORDS = "en_records_v1";
-    const state = { page: "top", selectedPatientId: null, formulas: [] };
+    const KEY_STRATEGY = "en_strategy_ui_v2";
 
+    const CONTRA_OPTIONS = [
+      "腸管虚血が疑われる",
+      "腸閉塞 / 穿孔が疑われる",
+      "制御困難なショック",
+      "大量の上部消化管出血",
+      "高用量血管作動薬の持続投与中",
+    ];
+
+    const ROUTE_OPTIONS = ["未入力", "経鼻胃管", "経口胃管", "経鼻空腸", "経口空腸", "経口", "その他"];
+
+    const state = { page: "top", selectedPatientId: null, formulas: [] };
     const app = document.getElementById("app");
+    let __enChart = null;
+
     const j = (v) => JSON.stringify(v);
     const load = (k, d = []) => { try { return JSON.parse(localStorage.getItem(k) || j(d)); } catch { return d; } };
     const save = (k, v) => localStorage.setItem(k, j(v));
-    const fmt = (n, d=1) => Number(n || 0).toFixed(d);
+    const fmt = (n, d = 1) => Number(n || 0).toFixed(d);
     const today = () => new Date().toISOString().slice(0, 10);
+
+    function daysBetween(d1, d2) {
+      const a = new Date(d1 + "T12:00:00");
+      const b = new Date(d2 + "T12:00:00");
+      return Math.max(1, Math.floor((b - a) / 86400000) + 1);
+    }
+
+    function getCarbPer100ml(f) {
+      if (f.carbohydrate_g_per_100ml != null && f.carbohydrate_g_per_100ml !== "") {
+        const v = Number(f.carbohydrate_g_per_100ml);
+        if (!Number.isNaN(v)) return { carb: v, est: false };
+      }
+      const kpm = Number(f.kcal_per_ml || 0);
+      const p100 = Number(f.protein_g_per_100ml || 0);
+      const est = Math.max(((kpm * 100) - p100 * 4) / 4, 0);
+      return { carb: est, est: true };
+    }
+
+    function loadStrategyMap() {
+      const m = load(KEY_STRATEGY, {});
+      return typeof m === "object" && m !== null ? m : {};
+    }
+
+    function saveStrategyState(pid, obj) {
+      const m = loadStrategyMap();
+      m[pid] = { ...m[pid], ...obj };
+      save(KEY_STRATEGY, m);
+    }
+
+    function getStrategyState(pid, p) {
+      const m = loadStrategyMap();
+      const d = m[pid] || {};
+      return {
+        evalToday: d.evalToday ?? p.today ?? today(),
+        ward: d.ward ?? "ICU",
+        weight: d.weight ?? Number(p.weight_kg) || 60,
+        height: d.height ?? Number(p.height_cm) || 170,
+        kcalPerKg: d.kcalPerKg ?? 25,
+        proteinPerKg: d.proteinPerKg ?? 1.2,
+        plannedRate: d.plannedRate ?? 50,
+        plannedHours: d.plannedHours ?? 24,
+        day7Ratio: d.day7Ratio ?? 100,
+        scheduleHours: d.scheduleHours ?? 24,
+        actualRate: d.actualRate ?? d.plannedRate ?? 50,
+        actualHours: d.actualHours ?? d.plannedHours ?? 24,
+        prevPlannedRate: d.prevPlannedRate ?? 50,
+        prevPlannedHours: d.prevPlannedHours ?? 24,
+        route: d.route ?? "未入力",
+        notes: d.notes ?? "",
+        assess: d.assess || {},
+      };
+    }
 
     async function fetchFormulas() {
       const res = await fetch("/api/formulas");
@@ -77,8 +152,8 @@
     function getEnabledFormulas() {
       const settings = load(KEY_SETTINGS, []);
       if (!settings.length) return state.formulas;
-      const enabled = new Set(settings.filter(s => s.enabled).map(s => s.name));
-      return state.formulas.filter(f => enabled.has(f.name));
+      const enabled = new Set(settings.filter((s) => s.enabled).map((s) => s.name));
+      return state.formulas.filter((f) => enabled.has(f.name));
     }
 
     function render() {
@@ -89,7 +164,10 @@
       return renderStrategy();
     }
 
-    function go(page) { state.page = page; render(); }
+    function go(page) {
+      state.page = page;
+      render();
+    }
     window.go = go;
 
     function renderTop() {
@@ -107,11 +185,11 @@
         <div class="card">
           <h2>新規患者登録</h2>
           <div class="row">
-            <div><label>患者ID</label><input id="pid" /></div>
-            <div><label>入室日</label><input id="admit" type="date" value="${today()}" /></div>
-            <div><label>本日の日付</label><input id="td" type="date" value="${today()}" /></div>
-            <div><label>身長(cm)</label><input id="ht" type="number" value="170" step="0.5"/></div>
-            <div><label>体重(kg)</label><input id="wt" type="number" value="60" step="0.5"/></div>
+            <div><label class="lbl">患者ID</label><input id="pid" /></div>
+            <div><label class="lbl">入室日</label><input id="admit" type="date" value="${today()}" /></div>
+            <div><label class="lbl">本日の日付</label><input id="td" type="date" value="${today()}" /></div>
+            <div><label class="lbl">身長(cm)</label><input id="ht" type="number" value="170" step="0.5"/></div>
+            <div><label class="lbl">体重(kg)</label><input id="wt" type="number" value="60" step="0.5"/></div>
           </div><br/>
           <button type="button" onclick="registerPatient()">患者を登録</button>
           <div id="msg" class="muted"></div>
@@ -129,14 +207,17 @@
       const msg = document.getElementById("msg");
       if (!p.patient_id) return (msg.textContent = "患者IDを入力してください。");
       const patients = load(KEY_PATIENTS, []);
-      if (patients.some(x => x.patient_id === p.patient_id)) return (msg.textContent = "同じ患者IDが既にあります。");
-      patients.push(p); save(KEY_PATIENTS, patients);
-      state.selectedPatientId = p.patient_id; state.page = "select"; render();
+      if (patients.some((x) => x.patient_id === p.patient_id)) return (msg.textContent = "同じ患者IDが既にあります。");
+      patients.push(p);
+      save(KEY_PATIENTS, patients);
+      state.selectedPatientId = p.patient_id;
+      state.page = "select";
+      render();
     };
 
     function renderSettings() {
       const existing = load(KEY_SETTINGS, []);
-      const setMap = new Map(existing.map(x => [x.name, !!x.enabled]));
+      const setMap = new Map(existing.map((x) => [x.name, !!x.enabled]));
       const byVendor = {};
       for (const f of state.formulas) {
         const v = f.vendor || "（メーカー未設定）";
@@ -172,7 +253,9 @@
     }
 
     window.setAllFormulas = (on) => {
-      document.querySelectorAll("input[data-formula-name]").forEach((el) => { el.checked = on; });
+      document.querySelectorAll("input[data-formula-name]").forEach((el) => {
+        el.checked = on;
+      });
     };
 
     window.saveSettings = () => {
@@ -191,7 +274,9 @@
         app.innerHTML = `<div class="card"><p>登録済み患者がいません。</p></div>`;
         return;
       }
-      const options = patients.map(p => `<option value="${p.patient_id}">${p.patient_id} | 入室日:${p.icu_admission_date} | 体重:${p.weight_kg}kg</option>`).join("");
+      const options = patients
+        .map((p) => `<option value="${p.patient_id}">${p.patient_id} | 入室日:${p.icu_admission_date} | 体重:${p.weight_kg}kg</option>`)
+        .join("");
       app.innerHTML = `
         <div class="card">
           <h2>患者選択</h2>
@@ -206,97 +291,750 @@
       render();
     };
 
+    function planForRatio(ratio, targetKcal, f, hoursPerDay) {
+      const kcal = (targetKcal * ratio) / 100;
+      const kpm = Number(f.kcal_per_ml || 0);
+      const volume = kpm > 0 ? kcal / kpm : 0;
+      const rate = volume / Number(hoursPerDay || 24);
+      const protein = (volume / 100) * Number(f.protein_g_per_100ml || 0);
+      return { kcal, volume, rate, protein };
+    }
+
+    function esc(s) {
+      return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+    }
+
     function renderStrategy() {
-      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
+      const p = load(KEY_PATIENTS, []).find((x) => x.patient_id === state.selectedPatientId);
       if (!p) return go("select");
       const formulas = getEnabledFormulas();
       if (!formulas.length) {
         app.innerHTML = `<div class="card">採用製剤の設定で製剤を選択してください。</div>`;
         return;
       }
-      const formulaOptions = formulas.map(f => `<option value="${f.name}">${f.name}</option>`).join("");
-      const days = Math.max(1, Math.floor((new Date(p.today) - new Date(p.icu_admission_date)) / 86400000) + 1);
-      const dayLabel = `Day${Math.min(days, 7)}`;
-      app.innerHTML = `
-        <div class="card"><h2>戦略立案: ${p.patient_id} <span class="badge">${dayLabel}</span></h2></div>
-        <div class="card">
-          <h3>製剤選択 / 現在の投与量</h3>
-          <p class="muted" style="margin:0 0 12px">現在の入室日数（入室日を Day1）: <strong>Day${days}</strong></p>
-          <div class="row">
-            <div><label>製剤</label><select id="formula">${formulaOptions}</select></div>
-            <div><label>現在の投与速度 (mL/h)</label><input id="rate" type="number" value="50" step="5"></div>
-            <div><label>本日の投与時間 (h/day)</label><input id="hours" type="number" value="24" step="1"></div>
-            <div><label title="ガイドライン必要量に対し、Day7で何%ぶんを投与で満たしたいか">Day7の投与目標（ガイドライン比・%）</label><input id="day7" type="number" value="100" step="5"></div>
-          </div><br/>
-          <button type="button" onclick="calcPlan()">計算する</button>
-          <div id="out"></div>
-        </div>
-        <div class="card">
-          <h3>連日投与記録（時系列）</h3>
-          <div id="records"></div>
-        </div>`;
-      renderRecordsTable();
-    }
 
-    window.calcPlan = () => {
-      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
-      const f = getEnabledFormulas().find(x => x.name === document.getElementById("formula").value);
-      const rate = Number(document.getElementById("rate").value);
-      const hours = Number(document.getElementById("hours").value);
-      const day7 = Number(document.getElementById("day7").value);
-      const vol = rate * hours;
-      const kcal = vol * Number(f.kcal_per_ml || 0);
-      const protein = vol / 100 * Number(f.protein_g_per_100ml || 0);
-      const carb100 = Math.max(((Number(f.kcal_per_ml || 0) * 100) - Number(f.protein_g_per_100ml || 0) * 4) / 4, 0);
-      const carb = vol / 100 * carb100;
-      const targetKcal = Number(p.weight_kg) * 25;
-      const targetProtein = Number(p.weight_kg) * 1.2;
+      const st = getStrategyState(p.patient_id, p);
+
+      const icuDays = daysBetween(p.icu_admission_date, st.evalToday);
+      const dayNow = Math.min(icuDays, 7);
+      const targetKcal = st.weight * st.kcalPerKg;
+      const targetProtein = st.weight * st.proteinPerKg;
       const targetCarb = Math.max((targetKcal - targetProtein * 4) / 4, 0);
-      const day = Math.max(1, Math.floor((new Date(p.today) - new Date(p.icu_admission_date)) / 86400000) + 1);
-      const dayNow = Math.min(day, 7);
-      const dayRatio = targetKcal > 0 ? kcal / targetKcal * 100 : 0;
-      const day7kcal = targetKcal * (day7 / 100);
-      const ratioTodayIdeal = day7 <= dayRatio ? dayRatio : (dayRatio + (day7 - dayRatio) * ((dayNow - 1) / 6));
-      const idealKcal = targetKcal * ratioTodayIdeal / 100;
-      const diff = kcal - idealKcal;
-      const reached = kcal >= day7kcal && day7kcal > 0;
-      const fb = reached
-        ? `Day7目標(${fmt(day7kcal,0)}kcal/day)は達成済みです。`
-        : `同Day理想目標との差: ${diff >= 0 ? "+" : ""}${fmt(diff,0)} kcal/day`;
-      const kpm = Number(f.kcal_per_ml || 0);
-      const day7vol = kpm > 0 ? day7kcal / kpm : 0;
-      const day7protein = day7vol / 100 * Number(f.protein_g_per_100ml || 0);
-      const day7carb = day7vol / 100 * carb100;
-      const out = document.getElementById("out");
-      out.innerHTML = `
-        <p><b>現在の投与:</b> ${fmt(vol,0)} mL/day | ${fmt(kcal,0)} kcal/day | たんぱく質 ${fmt(protein)} g/day | 糖質 ${fmt(carb)} g/day</p>
-        <p><b>Day7時点の目標:</b> ${fmt(day7vol,0)} mL/day | ${fmt(day7kcal,0)} kcal/day | たんぱく質 ${fmt(day7protein)} g/day | 糖質 ${fmt(day7carb)} g/day</p>
-        <p><b>Day${dayNow}理想目標（エネルギー）:</b> ${fmt(idealKcal,0)} kcal/day</p>
-        <p class="muted">${fb}</p>
-        <button type="button" onclick="saveRecord('${f.name}', ${rate}, ${hours}, ${vol}, ${kcal}, ${protein}, ${carb}, ${dayNow})">この計画で投与を実施する</button>
-      `;
-    };
 
-    window.saveRecord = (formula, rate, hours, vol, kcal, protein, carb, icuDay) => {
-      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
-      const records = load(KEY_RECORDS, []);
-      const recordDate = p.today || today();
-      const next = records.filter(r => !(r.patient_id === p.patient_id && r.record_date === recordDate));
-      next.push({ patient_id: p.patient_id, record_date: recordDate, icu_day: icuDay, formula_name: formula, rate_ml_h: rate, hours_per_day: hours, volume_ml_day: vol, kcal_day: kcal, protein_g_day: protein, carbohydrate_g_day: carb });
-      save(KEY_RECORDS, next);
-      renderRecordsTable();
-      alert("投与記録を保存しました。");
-    };
+      const formulaOptions = formulas.map((f) => `<option value="${esc(f.name)}">${esc(f.name)}</option>`).join("");
+      const selName = st.selectedFormula && formulas.some((x) => x.name === st.selectedFormula) ? st.selectedFormula : formulas[0].name;
 
-    function renderRecordsTable() {
-      const p = load(KEY_PATIENTS, []).find(x => x.patient_id === state.selectedPatientId);
-      const rows = load(KEY_RECORDS, []).filter(r => r.patient_id === p.patient_id).sort((a,b) => a.icu_day - b.icu_day)
-        .map(r => `<tr><td>Day${r.icu_day}</td><td>${r.record_date}</td><td>${r.formula_name}</td><td>${fmt(r.kcal_day,0)}</td><td>${fmt(r.protein_g_day)}</td><td>${fmt(r.carbohydrate_g_day)}</td></tr>`)
-        .join("");
-      document.getElementById("records").innerHTML = rows
-        ? `<table><thead><tr><th>Day</th><th>日付</th><th>製剤</th><th>kcal/day</th><th>たんぱく質g/day</th><th>糖質g/day</th></tr></thead><tbody>${rows}</tbody></table>`
-        : `<p class="muted">記録なし</p>`;
+      app.innerHTML = `
+        <div class="card">
+          <h2>戦略立案: ${esc(p.patient_id)} <span class="badge">Day${dayNow}</span></h2>
+          <p class="muted">入室日を Day1 とした入室日数: <strong>Day${icuDays}</strong></p>
+        </div>
+
+        <div class="card">
+          <details open>
+            <summary><strong>患者情報・本日の評価・栄養必要量</strong></summary>
+            <div class="grid-2" style="margin-top:12px">
+              <div>
+                <label class="lbl">患者ID</label>
+                <input type="text" value="${esc(p.patient_id)}" readonly />
+              </div>
+              <div>
+                <label class="lbl">入室日（登録データ）</label>
+                <input type="text" value="${esc(p.icu_admission_date)}" readonly />
+              </div>
+              <div>
+                <label class="lbl">本日の日付（評価用）</label>
+                <input type="date" id="st-evalToday" value="${esc(st.evalToday)}" />
+              </div>
+              <div>
+                <label class="lbl">病棟種別</label>
+                <select id="st-ward">
+                  <option value="ICU" ${st.ward === "ICU" ? "selected" : ""}>ICU</option>
+                  <option value="HCU" ${st.ward === "HCU" ? "selected" : ""}>HCU</option>
+                  <option value="一般病棟" ${st.ward === "一般病棟" ? "selected" : ""}>一般病棟</option>
+                </select>
+              </div>
+              <div>
+                <label class="lbl">体重 (kg)</label>
+                <input type="number" id="st-weight" min="20" max="200" step="0.5" value="${st.weight}" />
+              </div>
+              <div>
+                <label class="lbl">身長 (cm)</label>
+                <input type="number" id="st-height" min="100" max="220" step="0.5" value="${st.height}" />
+              </div>
+              <div>
+                <label class="lbl">エネルギー必要量 (kcal/kg/day)</label>
+                <input type="number" id="st-kpkg" min="15" max="40" step="0.5" value="${st.kcalPerKg}" />
+              </div>
+              <div>
+                <label class="lbl">たんぱく必要量 (g/kg/day)</label>
+                <input type="number" id="st-pkg" min="0.5" max="3" step="0.1" value="${st.proteinPerKg}" />
+              </div>
+            </div>
+            <p class="muted">${esc(st.ward)}在室日数（入室日をDay1）: Day${icuDays} / BMI: ${fmt(st.weight / ((st.height / 100) ** 2), 1)}</p>
+            <p class="muted">目標エネルギー: <strong>${fmt(targetKcal, 0)}</strong> kcal/day, 目標たんぱく: <strong>${fmt(targetProtein, 1)}</strong> g/day, 糖質(参考): <strong>${fmt(targetCarb, 1)}</strong> g/day</p>
+          </details>
+        </div>
+
+        <div class="card">
+          <div class="tabs-nav">
+            <button type="button" class="tab-btn active" data-tab="plan">投与計画</button>
+            <button type="button" class="tab-btn" data-tab="assess">現状アセスメント</button>
+            <button type="button" class="tab-btn" data-tab="formulas">製剤リスト</button>
+          </div>
+
+          <div id="tab-plan" class="tab-panel active">
+            ${renderPlanTabInner(formulas, selName, st, p, icuDays, dayNow)}
+          </div>
+          <div id="tab-assess" class="tab-panel">
+            ${renderAssessTabInner(st)}
+          </div>
+          <div id="tab-formulas" class="tab-panel">
+            ${renderFormulasTabInner(formulas)}
+          </div>
+        </div>`;
+
+      bindStrategyTabs();
+      bindPlanHandlers(p.patient_id);
+      runPlanCompute(p, formulas);
+      if (document.getElementById("assess-comments-out")) window.saveAssessAndRefresh();
     }
+
+    function renderPlanTabInner(formulas, selName, st, p, icuDays, dayNow) {
+      const targetKcal = st.weight * st.kcalPerKg;
+      const targetProtein = st.weight * st.proteinPerKg;
+      const targetCarb = Math.max((targetKcal - targetProtein * 4) / 4, 0);
+
+      let candRows = "";
+      for (const f of formulas) {
+        const kpm = Number(f.kcal_per_ml || 0);
+        const needMl = kpm > 0 ? targetKcal / kpm : 0;
+        const prot = (needMl / 100) * Number(f.protein_g_per_100ml || 0);
+        const k100 = kpm * 100;
+        candRows += `<tr>
+          <td>${esc(f.name)}</td>
+          <td>${fmt(k100, 0)}</td>
+          <td>${fmt(f.protein_g_per_100ml, 1)}</td>
+          <td>${f.osmolality_mOsmL != null && f.osmolality_mOsmL !== "" ? fmt(f.osmolality_mOsmL, 0) : "—"}</td>
+          <td>${fmt(needMl, 0)}</td>
+          <td>${fmt(prot, 1)}</td>
+        </tr>`;
+      }
+
+      const formulaOptions = formulas.map((f) => `<option value="${esc(f.name)}" ${f.name === selName ? "selected" : ""}>${esc(f.name)}</option>`).join("");
+
+      const contraHtml = CONTRA_OPTIONS.map(
+        (opt, i) =>
+          `<label class="check-row"><input type="checkbox" id="contra-${i}" data-contra="${i}" /><span>${esc(opt)}</span></label>`,
+      ).join("");
+
+      const routeOpts = ROUTE_OPTIONS.map((r) => `<option value="${esc(r)}" ${st.route === r ? "selected" : ""}>${esc(r)}</option>`).join("");
+
+      return `
+        <h3>1. 製剤候補と目標量の計算</h3>
+        <div class="table-scroll">
+          <table class="data">
+            <thead><tr><th>項目</th><th>目標量（ガイドライン参考）</th></tr></thead>
+            <tbody>
+              <tr><td>カロリー</td><td>${fmt(targetKcal, 0)} kcal/day</td></tr>
+              <tr><td>たんぱく質</td><td>${fmt(targetProtein, 1)} g/day</td></tr>
+              <tr><td>糖質</td><td>${fmt(targetCarb, 1)} g/day</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-scroll">
+          <table class="data">
+            <thead><tr><th>商品名</th><th>100mL kcal</th><th>たんぱく g/100mL</th><th>浸透圧</th><th>必要量 mL/day</th><th>たんぱく理論 g/day</th></tr></thead>
+            <tbody>${candRows}</tbody>
+          </table>
+        </div>
+
+        <hr class="sep" />
+        <h3>2. 現在の投与量</h3>
+        <p class="muted">現在の入室日数（入室日を Day1 とする）: <strong>Day${icuDays}</strong></p>
+        <div class="grid-2">
+          <div><label class="lbl">使用予定の製剤</label><select id="plan-formula">${formulaOptions}</select></div>
+          <div></div>
+          <div><label class="lbl">注入予定速度 (mL/h)</label><input type="number" id="plan-prate" min="0" step="5" value="${st.plannedRate}" /></div>
+          <div><label class="lbl">注入予定時間 (h/day)</label><input type="number" id="plan-phours" min="0" max="24" step="1" value="${st.plannedHours}" /></div>
+          <div style="grid-column:1/-1">
+            <label class="lbl">Day7時点の投与目標（ガイドライン必要量に対する達成率・%）</label>
+            <input type="number" id="plan-day7" min="0" max="150" step="5" value="${st.day7Ratio}" />
+            <p class="muted">ガイドライン上の理想に対し、Day7 で投与でその何％を満たしたいか。</p>
+          </div>
+        </div>
+        <div id="plan-section2-out"></div>
+
+        <hr class="sep" />
+        <h3>3. 注入スケジュール（Day1〜Day7）</h3>
+        <p class="muted">各 Day の％は <strong>ガイドライン必要量（エネルギー）に対する達成率</strong>。Day1 は注入予定から自動、Day7 は上記目標率まで線形補間。</p>
+        <div class="grid-2">
+          <div><label class="lbl">1日の注入時間 (h)</label><input type="number" id="plan-sch-hours" min="4" max="24" step="1" value="${st.scheduleHours}" /></div>
+        </div>
+        <div id="plan-section3-out"></div>
+
+        <hr class="sep" />
+        <h3>4. 本日の投与予定量</h3>
+        <p class="muted">2. の注入予定速度・時間を初期値に反映。2. を変えると自動で上書き。本日だけ変える場合は下で調整。</p>
+        <p>現在の Day: <strong>Day${dayNow}</strong></p>
+        <div class="grid-2">
+          <div>
+            <label class="lbl">現在の投与速度 (mL/h)</label>
+            <input type="number" id="plan-arate" min="0" step="5" value="${st.actualRate}" />
+          </div>
+          <div>
+            <label class="lbl">本日の実際の投与時間 (h/day)</label>
+            <input type="number" id="plan-ahours" min="0" max="24" step="1" value="${st.actualHours}" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div>
+            <h4>禁忌・注意状態チェック（目安）</h4>
+            ${contraHtml}
+          </div>
+          <div></div>
+        </div>
+        <div id="plan-section4-out"></div>
+
+        <hr class="sep" />
+        <h4>投与記録に付与する情報（任意）</h4>
+        <div class="grid-2">
+          <div><label class="lbl">投与経路</label><select id="plan-route">${routeOpts}</select></div>
+          <div><label class="lbl">備考</label><textarea id="plan-notes" rows="3">${esc(st.notes)}</textarea></div>
+        </div>
+        <div class="btn-stack" style="margin-top:12px">
+          <button type="button" class="secondary" onclick="persistStrategyForm()">入力を端末に保存</button>
+          <button type="button" id="btn-save-record">この計画で投与を実施する（記録保存）</button>
+          <button type="button" class="secondary" id="btn-dl-csv">この投与計画をCSVとしてダウンロード</button>
+        </div>
+        <div id="plan-msg" class="muted"></div>
+      `;
+    }
+
+    function renderAssessTabInner(st) {
+      const a = st.assess || {};
+      const pv = a.plannedVol ?? 1500;
+      const av = a.actualVol ?? 1200;
+      const ih = a.interruptH ?? 2;
+      const gr = a.gastric ?? 0;
+      const dia = a.diarrhea ?? 0;
+      const vom = a.vomit ?? 0;
+      const abd = a.abd ?? "なし";
+      const other = a.other ?? "";
+      const ratio = pv > 0 ? (av / pv) * 100 : 0;
+      return `
+        <h3>1. 昨日の実投与量</h3>
+        <div class="grid-2">
+          <div><label class="lbl">予定総量 (mL/day)</label><input type="number" id="as-pv" min="0" step="50" value="${pv}" /></div>
+          <div><label class="lbl">実投与量 (mL/day)</label><input type="number" id="as-av" min="0" step="50" value="${av}" /></div>
+          <div><label class="lbl">中断時間の合計 (h/day)</label><input type="number" id="as-ih" min="0" step="0.5" value="${ih}" /></div>
+          <div><label class="lbl">最大胃残量 (mL)（任意）</label><input type="number" id="as-gr" min="0" step="10" value="${gr}" /></div>
+        </div>
+        <div class="metric-box"><span class="muted">予定量に対する実投与率</span><div class="val">${fmt(ratio, 0)} %</div></div>
+
+        <h3>2. 消化管耐容性</h3>
+        <div class="grid-2">
+          <div><label class="lbl">下痢回数 (/day)</label><input type="number" id="as-dia" min="0" max="20" step="1" value="${dia}" /></div>
+          <div><label class="lbl">嘔吐回数 (/day)</label><input type="number" id="as-vom" min="0" max="20" step="1" value="${vom}" /></div>
+          <div><label class="lbl">腹部膨満感・鼓腸</label>
+            <select id="as-abd">
+              ${["なし", "軽度", "中等度", "高度"].map((x) => `<option value="${x}" ${abd === x ? "selected" : ""}>${x}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <label class="lbl">その他所見 / 問題点（任意）</label>
+        <textarea id="as-other">${esc(other)}</textarea>
+
+        <h3>3. 評価と翌日への提案（目安）</h3>
+        <div id="assess-comments-out"></div>
+        <button type="button" class="secondary" style="margin-top:12px" onclick="saveAssessAndRefresh()">アセスメント入力を保存・コメント更新</button>
+      `;
+    }
+
+    function renderFormulasTabInner(formulas) {
+      if (!formulas.length) return "<p class=\"muted\">製剤がありません。</p>";
+      const keys = Object.keys(formulas[0]).filter((k) => k !== "");
+      let head = keys.map((k) => `<th>${esc(k)}</th>`).join("");
+      let body = formulas
+        .map((f) => `<tr>${keys.map((k) => `<td>${esc(f[k])}</td>`).join("")}</tr>`)
+        .join("");
+      return `
+        <p class="muted">参照用（編集は <code>data_formulas.csv</code>）。</p>
+        <div class="table-scroll">
+          <table class="data"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
+        </div>
+      `;
+    }
+
+    function bindStrategyTabs() {
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const tab = btn.dataset.tab;
+          document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+          document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === "tab-" + tab));
+        });
+      });
+    }
+
+    function persistStrategyForm() {
+      const p = load(KEY_PATIENTS, []).find((x) => x.patient_id === state.selectedPatientId);
+      if (!p) return;
+      gatherAndSaveStrategyState(p.patient_id, p);
+      document.getElementById("plan-msg").textContent = "入力を保存しました。";
+    }
+
+    function gatherAndSaveStrategyState(pid, p) {
+      const g = (id) => document.getElementById(id);
+      if (!g("st-evalToday")) return;
+      const plannedRate = Number(g("plan-prate")?.value ?? 50);
+      const plannedHours = Number(g("plan-phours")?.value ?? 24);
+      const m = loadStrategyMap();
+      const st = { ...getStrategyState(pid, p), ...m[pid] };
+      const prevR = Number(st.prevPlannedRate);
+      const prevH = Number(st.prevPlannedHours);
+      const plannedChanged = Math.abs(prevR - plannedRate) > 1e-6 || Math.abs(prevH - plannedHours) > 1e-6;
+
+      st.evalToday = g("st-evalToday").value;
+      st.ward = g("st-ward").value;
+      st.weight = Number(g("st-weight").value);
+      st.height = Number(g("st-height").value);
+      st.kcalPerKg = Number(g("st-kpkg").value);
+      st.proteinPerKg = Number(g("st-pkg").value);
+      st.selectedFormula = g("plan-formula")?.value || st.selectedFormula;
+      st.plannedRate = plannedRate;
+      st.plannedHours = plannedHours;
+      st.day7Ratio = Number(g("plan-day7")?.value ?? 100);
+      st.scheduleHours = Number(g("plan-sch-hours")?.value ?? 24);
+      if (plannedChanged && g("plan-arate") && g("plan-ahours")) {
+        g("plan-arate").value = plannedRate;
+        g("plan-ahours").value = plannedHours;
+      }
+      st.actualRate = Number(g("plan-arate")?.value ?? plannedRate);
+      st.actualHours = Number(g("plan-ahours")?.value ?? plannedHours);
+      st.prevPlannedRate = plannedRate;
+      st.prevPlannedHours = plannedHours;
+      st.route = g("plan-route")?.value ?? "未入力";
+      st.notes = g("plan-notes")?.value ?? "";
+      saveStrategyState(pid, st);
+    }
+
+    function bindPlanHandlers(pid) {
+      const p = load(KEY_PATIENTS, []).find((x) => x.patient_id === pid);
+      const onChange = () => {
+        gatherAndSaveStrategyState(pid, p);
+        runPlanCompute(p, getEnabledFormulas());
+      };
+      [
+        "st-evalToday",
+        "st-ward",
+        "st-weight",
+        "st-height",
+        "st-kpkg",
+        "st-pkg",
+        "plan-formula",
+        "plan-prate",
+        "plan-phours",
+        "plan-day7",
+        "plan-sch-hours",
+      ].forEach((id) => {
+        const e = document.getElementById(id);
+        if (e) e.addEventListener("change", onChange);
+      });
+      ["plan-prate", "plan-phours"].forEach((id) => {
+        const e = document.getElementById(id);
+        if (e)
+          e.addEventListener("input", () => {
+            const pr = Number(document.getElementById("plan-prate").value);
+            const ph = Number(document.getElementById("plan-phours").value);
+            document.getElementById("plan-arate").value = pr;
+            document.getElementById("plan-ahours").value = ph;
+            onChange();
+          });
+      });
+      ["plan-arate", "plan-ahours"].forEach((id) => {
+        const e = document.getElementById(id);
+        if (e) e.addEventListener("change", onChange);
+      });
+
+      document.getElementById("btn-save-record")?.addEventListener("click", () => saveInfusionRecord(pid, p));
+      document.getElementById("btn-dl-csv")?.addEventListener("click", () => downloadPlanCsv(pid, p));
+
+      document.getElementById("btn-save-record")?.addEventListener("click", () => {
+        document.getElementById("plan-msg").textContent = "";
+      });
+    }
+
+    function runPlanCompute(p, formulas) {
+      const el = (id) => document.getElementById(id);
+      if (!el("plan-formula")) return;
+
+      if (__enChart) {
+        try {
+          __enChart.destroy();
+        } catch (e) {}
+        __enChart = null;
+      }
+
+      gatherAndSaveStrategyState(p.patient_id, p);
+      const m = loadStrategyMap();
+      const st = { ...getStrategyState(p.patient_id, p), ...m[p.patient_id] };
+
+      const f = formulas.find((x) => x.name === el("plan-formula").value);
+      if (!f) return;
+
+      const icuDays = daysBetween(p.icu_admission_date, st.evalToday);
+      const dayNow = Math.min(icuDays, 7);
+      const targetKcal = st.weight * st.kcalPerKg;
+      const { carb: carb100, est: carbEst } = getCarbPer100ml(f);
+
+      const plannedRate = Number(el("plan-prate").value);
+      const plannedHours = Number(el("plan-phours").value);
+      const plannedVol = plannedRate * plannedHours;
+      const plannedKcal = plannedVol * Number(f.kcal_per_ml || 0);
+      const plannedProt = (plannedVol / 100) * Number(f.protein_g_per_100ml || 0);
+      const plannedCarb = (plannedVol / 100) * carb100;
+
+      const day7Ratio = Number(el("plan-day7").value);
+      const day7Kcal = targetKcal * (day7Ratio / 100);
+      const kpm = Number(f.kcal_per_ml || 0);
+      const day7Vol = kpm > 0 ? day7Kcal / kpm : 0;
+      const day7Prot = (day7Vol / 100) * Number(f.protein_g_per_100ml || 0);
+      const day7Carb = (day7Vol / 100) * carb100;
+
+      el("plan-section2-out").innerHTML = `
+        <p class="muted">Day7 の目標エネルギー: <strong>${fmt(day7Kcal, 0)}</strong> kcal/day（ガイドライン必要量の ${fmt(day7Ratio, 0)}% に相当）</p>
+        <div class="table-scroll">
+          <table class="data">
+            <thead><tr><th>項目</th><th>現在の投与予定</th><th>Day7時点の目標</th></tr></thead>
+            <tbody>
+              <tr><td>投与量</td><td>${fmt(plannedVol, 0)} mL/day</td><td>${fmt(day7Vol, 0)} mL/day</td></tr>
+              <tr><td>エネルギー</td><td>${fmt(plannedKcal, 0)} kcal/day</td><td>${fmt(day7Kcal, 0)} kcal/day</td></tr>
+              <tr><td>たんぱく質</td><td>${fmt(plannedProt, 1)} g/day</td><td>${fmt(day7Prot, 1)} g/day</td></tr>
+              <tr><td>糖質</td><td>${fmt(plannedCarb, 1)} g/day</td><td>${fmt(day7Carb, 1)} g/day</td></tr>
+            </tbody>
+          </table>
+        </div>
+        ${carbEst ? '<p class="muted">※ 糖質は製剤データからの推定を含みます。</p>' : ""}
+      `;
+
+      let startRatio = targetKcal > 0 ? (plannedKcal / targetKcal) * 100 : 0;
+      startRatio = Math.max(0, Math.min(150, startRatio));
+      const schH = Number(el("plan-sch-hours").value);
+      const ratios =
+        day7Ratio === startRatio ? Array(7).fill(startRatio) : Array.from({ length: 7 }, (_, i) => startRatio + ((day7Ratio - startRatio) * i) / 6);
+
+      const plans = ratios.map((r) => planForRatio(r, targetKcal, f, schH));
+      let schRows = "";
+      for (let i = 0; i < 7; i++) {
+        const d = i + 1;
+        const pl = plans[i];
+        const cur = d === dayNow ? " row-current" : "";
+        schRows += `<tr class="${cur}">
+          <td>Day${d}</td>
+          <td>${fmt(ratios[i], 0)}</td>
+          <td>${fmt(pl.kcal, 0)}</td>
+          <td>${fmt(pl.volume, 0)}</td>
+          <td>${fmt(pl.rate, 0)}</td>
+          <td>${fmt(pl.protein, 1)}</td>
+        </tr>`;
+      }
+
+      el("plan-section3-out").innerHTML = `
+        <p class="muted">Day1 開始時点の達成率（注入予定から自動）: <strong>${fmt(startRatio, 0)}%</strong></p>
+        <div class="table-scroll">
+          <table class="data">
+            <thead><tr><th>Day</th><th>必要量達成率%（ガイドライン比）</th><th>予定kcal</th><th>予定mL</th><th>予定mL/h</th><th>予定たんぱくg</th></tr></thead>
+            <tbody>${schRows}</tbody>
+          </table>
+        </div>
+      `;
+
+      const actualRate = Number(el("plan-arate").value);
+      const actualHours = Number(el("plan-ahours").value);
+      const actualVol = actualRate * actualHours;
+      const actualKcal = actualVol * Number(f.kcal_per_ml || 0);
+      const actualProt = (actualVol / 100) * Number(f.protein_g_per_100ml || 0);
+      const actualCarb = (actualVol / 100) * carb100;
+      const protoRatio = ratios[dayNow - 1];
+      const protoKcal = plans[dayNow - 1].kcal;
+      const actualRatio = targetKcal > 0 ? (actualKcal / targetKcal) * 100 : 0;
+      const gapRatio = actualRatio - protoRatio;
+      const gapKcal = actualKcal - protoKcal;
+      const protoVol = plans[dayNow - 1].volume;
+      const protoProt = plans[dayNow - 1].protein;
+      const protoCarb = (protoVol / 100) * carb100;
+
+      const contraSel = CONTRA_OPTIONS.map((_, i) => document.getElementById(`contra-${i}`)?.checked).some(Boolean);
+
+      el("plan-section4-out").innerHTML = `
+        <div class="table-scroll">
+          <table class="data">
+            <thead><tr><th>項目</th><th>値</th></tr></thead>
+            <tbody>
+              <tr><td>製剤名</td><td>${esc(f.name)}</td></tr>
+              <tr><td>投与速度 (mL/h)</td><td>${fmt(actualRate, 0)}</td></tr>
+              <tr><td>投与時間 (h/day)</td><td>${fmt(actualHours, 1)}</td></tr>
+              <tr><td>投与量 (mL/day)</td><td>${fmt(actualVol, 0)}</td></tr>
+              <tr><td>エネルギー (kcal/day)</td><td>${fmt(actualKcal, 0)}</td></tr>
+              <tr><td>たんぱく質 (g/day)</td><td>${fmt(actualProt, 1)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="metric-row">
+          <div class="metric-box"><span class="muted">実投与率 vs 目標（差）</span><div class="val">${gapRatio >= 0 ? "+" : ""}${fmt(gapRatio, 1)} %pt</div></div>
+          <div class="metric-box"><span class="muted">実エネルギー vs 目標（差）</span><div class="val">${gapKcal >= 0 ? "+" : ""}${fmt(gapKcal, 0)} kcal/day</div></div>
+        </div>
+        <h4>現在値と目標値の見える化</h4>
+        <div class="table-scroll">
+          <table class="data">
+            <thead><tr><th>項目</th><th>Day${dayNow}</th><th>Day${dayNow}理想目標</th><th>Day7目標</th><th>差分(現在-同Day理想)</th></tr></thead>
+            <tbody>
+              <tr><td>投与量 (mL/day)</td><td>${fmt(actualVol, 1)}</td><td>${fmt(protoVol, 1)}</td><td>${fmt(day7Vol, 1)}</td><td>${fmt(actualVol - protoVol, 1)}</td></tr>
+              <tr><td>エネルギー</td><td>${fmt(actualKcal, 1)}</td><td>${fmt(protoKcal, 1)}</td><td>${fmt(day7Kcal, 1)}</td><td>${fmt(actualKcal - protoKcal, 1)}</td></tr>
+              <tr><td>たんぱく質</td><td>${fmt(actualProt, 1)}</td><td>${fmt(protoProt, 1)}</td><td>${fmt(day7Prot, 1)}</td><td>${fmt(actualProt - protoProt, 1)}</td></tr>
+              <tr><td>糖質</td><td>${fmt(actualCarb, 1)}</td><td>${fmt(protoCarb, 1)}</td><td>${fmt(day7Carb, 1)}</td><td>${fmt(actualCarb - protoCarb, 1)}</td></tr>
+              <tr><td>達成率 (%)</td><td>${fmt(actualRatio, 1)}</td><td>${fmt(protoRatio, 1)}</td><td>${fmt(day7Ratio, 1)}</td><td>${fmt(gapRatio, 1)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="plan-suggestions"></div>
+        <h4>時系列（連日投与記録）</h4>
+        <div id="chart-wrap"><canvas id="en-ts-chart"></canvas></div>
+        <p class="muted">色: 赤系＝エネルギー / 青＝たんぱく / 緑＝糖質（淡色＝Day7目標）</p>
+        <div id="records-table-wrap"></div>
+      `;
+
+      renderSuggestions({
+        contraSel,
+        actualKcal,
+        day7Kcal,
+        dayNow,
+        gapKcal: actualKcal - protoKcal,
+        protoRatioNext: dayNow < 7 ? ratios[dayNow] : null,
+        plans,
+        targetKcal,
+        f,
+        schH,
+      });
+
+      renderRecordsChartAndTable(p.patient_id, day7Kcal, day7Prot, day7Carb);
+
+      window.__planCsvRows = ratios.map((r, i) => ({
+        Day: `Day${i + 1}`,
+        必要量達成率_pct: fmt(r, 0),
+        予定エネルギー_kcal: fmt(plans[i].kcal, 0),
+        予定総量_mL: fmt(plans[i].volume, 0),
+        予定速度_mL_h: fmt(plans[i].rate, 0),
+        予定たんぱく量_g: fmt(plans[i].protein, 1),
+      }));
+    }
+
+    function renderSuggestions(ctx) {
+      const ul = document.getElementById("plan-suggestions");
+      if (!ul) return;
+      const lines = [];
+      if (ctx.contraSel) lines.push("禁忌・注意状態が選択されています。全身管理を優先し、増量は慎重に検討してください。");
+      else if (ctx.actualKcal >= ctx.day7Kcal && ctx.day7Kcal > 0) {
+        lines.push(`本日の実投与エネルギーは ${fmt(ctx.actualKcal, 0)} kcal/day で、Day7目標 ${fmt(ctx.day7Kcal, 0)} kcal/day をすでに達成しています。`);
+        lines.push("目標達成後は過不足が出ないよう、維持量の微調整を検討してください。");
+      } else if (ctx.dayNow < 7) {
+        const g = ctx.gapKcal;
+        const pr = ctx.protoRatioNext;
+        if (g < 0) lines.push(`同Day理想目標より ${fmt(Math.abs(g), 0)} kcal/day 不足。翌日はガイドライン比 ${fmt(pr, 0)}% を目安に増量を検討。`);
+        else if (g > 0) lines.push(`同Day理想目標より ${fmt(g, 0)} kcal/day 上回り。翌日はガイドライン比 ${fmt(pr, 0)}% を目安に過量に注意。`);
+        else lines.push("同Day理想目標と一致。翌日も同プロトコル継続を検討。");
+        if (pr != null) {
+          const t = planForRatio(pr, ctx.targetKcal, ctx.f, ctx.schH);
+          lines.push(`翌日の推奨エネルギー: 約 ${fmt(t.kcal, 0)} kcal/day（ガイドライン比 ${fmt(pr, 0)}% 相当）`);
+          lines.push(`翌日の推奨総量・速度: 約 ${fmt(t.volume, 0)} mL/day, ${fmt(t.rate, 0)} mL/h`);
+        }
+      } else {
+        if (ctx.day7Kcal > 0 && ctx.actualKcal < ctx.day7Kcal) {
+          lines.push(`Day7 で目標に対して ${fmt(ctx.day7Kcal - ctx.actualKcal, 0)} kcal/day 未達。耐容性を確認しつつ補正を検討。`);
+        } else lines.push("Day7。目標達成状況を確認し、維持期の微調整を検討。");
+      }
+      ul.innerHTML = "<h4>提案（目安）</h4><ul>" + lines.map((s) => `<li>${esc(s)}</li>`).join("") + "</ul>";
+    }
+
+    function renderRecordsChartAndTable(pid, day7Kcal, day7Prot, day7Carb) {
+      const recs = load(KEY_RECORDS, [])
+        .filter((r) => r.patient_id === pid)
+        .sort((a, b) => a.icu_day - b.icu_day);
+      const byDay = new Map();
+      for (const r of recs) {
+        byDay.set(Number(r.icu_day), r);
+      }
+      const maxD = Math.max(7, ...recs.map((r) => Number(r.icu_day)), 1);
+      const labels = [];
+      const kcalD = [],
+        protD = [],
+        carbD = [];
+      const d7k = [],
+        d7p = [],
+        d7c = [];
+      for (let d = 1; d <= maxD; d++) {
+        labels.push("Day" + d);
+        const r = byDay.get(d);
+        kcalD.push(r ? Number(r.kcal_day) : null);
+        protD.push(r ? Number(r.protein_g_day) : null);
+        carbD.push(r ? Number(r.carbohydrate_g_day) : null);
+        if (d === 7) {
+          d7k.push(day7Kcal);
+          d7p.push(day7Prot);
+          d7c.push(day7Carb);
+        } else {
+          d7k.push(null);
+          d7p.push(null);
+          d7c.push(null);
+        }
+      }
+
+      const wrap = document.getElementById("records-table-wrap");
+      if (!recs.length) {
+        if (wrap) wrap.innerHTML = '<p class="muted">この患者の投与記録はまだありません。下のボタンで保存できます。</p>';
+      } else {
+        const rh = "<tr><th>Day</th><th>日付</th><th>製剤</th><th>kcal</th><th>たんぱく</th><th>糖質</th></tr>";
+        const rb = recs
+          .map(
+            (r) =>
+              `<tr><td>Day${r.icu_day}</td><td>${esc(r.record_date)}</td><td>${esc(r.formula_name)}</td><td>${fmt(r.kcal_day, 0)}</td><td>${fmt(r.protein_g_day, 1)}</td><td>${fmt(r.carbohydrate_g_day, 1)}</td></tr>`,
+          )
+          .join("");
+        if (wrap) wrap.innerHTML = `<div class="table-scroll"><table class="data"><thead>${rh}</thead><tbody>${rb}</tbody></table></div>`;
+      }
+
+      const canvas = document.getElementById("en-ts-chart");
+      if (!canvas || typeof Chart === "undefined") return;
+      if (__enChart) {
+        __enChart.destroy();
+        __enChart = null;
+      }
+      __enChart = new Chart(canvas.getContext("2d"), {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            { label: "エネルギー(kcal/day)", data: kcalD, borderColor: "#dc2626", backgroundColor: "#dc2626", spanGaps: false },
+            { label: "たんぱく質(g/day)", data: protD, borderColor: "#2563eb", backgroundColor: "#2563eb", spanGaps: false },
+            { label: "糖質(g/day)", data: carbD, borderColor: "#15803d", backgroundColor: "#15803d", spanGaps: false },
+            { label: "Day7目標エネルギー", data: d7k, borderColor: "#fca5a5", backgroundColor: "#fca5a5", borderDash: [4, 4], spanGaps: false },
+            { label: "Day7目標たんぱく", data: d7p, borderColor: "#93c5fd", backgroundColor: "#93c5fd", borderDash: [4, 4], spanGaps: false },
+            { label: "Day7目標糖質", data: d7c, borderColor: "#86efac", backgroundColor: "#86efac", borderDash: [4, 4], spanGaps: false },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "top" } },
+          scales: { y: { beginAtZero: true } },
+        },
+      });
+    }
+
+    function saveInfusionRecord(pid, p) {
+      gatherAndSaveStrategyState(pid, p);
+      const el = (id) => document.getElementById(id);
+      const formulas = getEnabledFormulas();
+      const f = formulas.find((x) => x.name === el("plan-formula").value);
+      if (!f) return;
+      const m = loadStrategyMap();
+      const st = { ...getStrategyState(pid, p), ...m[pid] };
+      const icuDays = daysBetween(p.icu_admission_date, st.evalToday);
+      const dayNow = Math.min(icuDays, 7);
+      const actualRate = Number(el("plan-arate").value);
+      const actualHours = Number(el("plan-ahours").value);
+      const actualVol = actualRate * actualHours;
+      const { carb: carb100 } = getCarbPer100ml(f);
+      const actualKcal = actualVol * Number(f.kcal_per_ml || 0);
+      const actualProt = (actualVol / 100) * Number(f.protein_g_per_100ml || 0);
+      const actualCarb = (actualVol / 100) * carb100;
+      const targetKcal = st.weight * st.kcalPerKg;
+      const day7Ratio = Number(el("plan-day7").value);
+      const day7Kcal = targetKcal * (day7Ratio / 100);
+      const kpm = Number(f.kcal_per_ml || 0);
+      const day7Vol = kpm > 0 ? day7Kcal / kpm : 0;
+      const day7Prot = (day7Vol / 100) * Number(f.protein_g_per_100ml || 0);
+      const day7Carb = (day7Vol / 100) * carb100;
+      const fiber100 = Number(f.fiber_g_per_100ml || 0);
+      const fiberDay = (actualVol / 100) * fiber100;
+      const lipidDay = Math.max(0, (actualKcal - actualProt * 4 - actualCarb * 4) / 9);
+      const osm = f.osmolality_mOsmL != null && f.osmolality_mOsmL !== "" ? Number(f.osmolality_mOsmL) : null;
+      const route = el("plan-route").value === "未入力" ? "" : el("plan-route").value;
+
+      const record = {
+        patient_id: pid,
+        record_date: st.evalToday,
+        icu_day: dayNow,
+        formula_name: f.name,
+        vendor: f.vendor || "",
+        kcal_per_ml: Number(f.kcal_per_ml || 0),
+        protein_g_per_100ml: Number(f.protein_g_per_100ml || 0),
+        fiber_g_per_100ml: fiber100,
+        osmolality_mOsmL: osm,
+        rate_ml_h: actualRate,
+        hours_per_day: actualHours,
+        volume_ml_day: actualVol,
+        kcal_day: actualKcal,
+        protein_g_day: actualProt,
+        carbohydrate_g_day: actualCarb,
+        fiber_g_day: fiberDay,
+        lipid_g_day: lipidDay,
+        day7_target_kcal: day7Kcal,
+        day7_target_protein_g: day7Prot,
+        day7_target_carbohydrate_g: day7Carb,
+        route,
+        notes: el("plan-notes").value.trim(),
+      };
+
+      const records = load(KEY_RECORDS, []);
+      const next = records.filter((r) => !(r.patient_id === pid && r.record_date === st.evalToday));
+      next.push(record);
+      save(KEY_RECORDS, next);
+      document.getElementById("plan-msg").textContent = `Day${dayNow} の投与記録を保存しました。`;
+      runPlanCompute(p, formulas);
+    }
+
+    function downloadPlanCsv(pid, p) {
+      const rows = window.__planCsvRows;
+      if (!rows || !rows.length) return;
+      const headers = Object.keys(rows[0]);
+      const bom = "\uFEFF";
+      const body = [headers.join(","), ...rows.map((r) => headers.map((h) => r[h]).join(","))].join("\n");
+      const blob = new Blob([bom + body], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `EN_plan_${pid}_${p.today || today()}.csv`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    window.saveAssessAndRefresh = () => {
+      const pid = state.selectedPatientId;
+      const p = load(KEY_PATIENTS, []).find((x) => x.patient_id === pid);
+      if (!p) return;
+      const assess = {
+        plannedVol: Number(document.getElementById("as-pv").value),
+        actualVol: Number(document.getElementById("as-av").value),
+        interruptH: Number(document.getElementById("as-ih").value),
+        gastric: Number(document.getElementById("as-gr").value),
+        diarrhea: Number(document.getElementById("as-dia").value),
+        vomit: Number(document.getElementById("as-vom").value),
+        abd: document.getElementById("as-abd").value,
+        other: document.getElementById("as-other").value,
+      };
+      saveStrategyState(pid, { assess });
+      const ratio = assess.plannedVol > 0 ? (assess.actualVol / assess.plannedVol) * 100 : 0;
+      const comments = [];
+      if (ratio >= 90) comments.push("エネルギー投与率は概ね良好（>=90%）です。");
+      else if (ratio >= 70) comments.push("エネルギー投与率70-90%です。中断理由を確認し運用改善を検討してください。");
+      else comments.push("エネルギー投与率<70%です。中断原因を詳細確認し増量や運用変更を検討してください。");
+      if (assess.diarrhea >= 3) comments.push("下痢が1日3回以上。感染性腸炎や薬剤性を鑑別し、製剤/速度調整を検討。");
+      if (assess.vomit >= 1) comments.push("嘔吐あり。胃排出遅延・イレウス評価と投与経路・薬剤調整を検討。");
+      if (assess.gastric >= 250) comments.push("胃残量が多め（>=250mL）。注入速度調整や運動改善薬の検討余地。");
+      if (assess.abd === "中等度" || assess.abd === "高度") comments.push("腹部膨満が中等度以上。速度見直しや一時減量を検討。");
+      if (!comments.length) comments.push("大きな問題はみられません。現行プラン継続を検討。");
+      document.getElementById("assess-comments-out").innerHTML = "<ul>" + comments.map((c) => `<li>${esc(c)}</li>`).join("") + "</ul>";
+    };
 
     (function setupStreamlitLinkBar() {
       const bar = document.getElementById("streamlit-full-app-bar");
