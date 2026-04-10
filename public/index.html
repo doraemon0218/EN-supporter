@@ -51,6 +51,14 @@
     @media (max-width: 640px) { .metric-row { grid-template-columns: 1fr; } }
     .metric-box { background: #f8fafc; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0; }
     .metric-box .val { font-size: 1.25rem; font-weight: 700; }
+    .signal-wrap { display: flex; align-items: center; gap: 12px; margin: 10px 0 14px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fafc; }
+    .traffic-light { width: 44px; padding: 6px; border-radius: 8px; background: #334155; display: grid; gap: 6px; }
+    .light-dot { width: 30px; height: 30px; border-radius: 50%; background: #94a3b8; opacity: 0.35; border: 1px solid rgba(0,0,0,.15); }
+    .light-dot.active { opacity: 1; }
+    .light-red.active { background: #ef4444; }
+    .light-yellow.active { background: #f59e0b; }
+    .light-blue.active { background: #3b82f6; }
+    .signal-text strong { display: block; margin-bottom: 2px; }
     .check-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; min-height: 44px; }
     .check-row input { width: 22px; height: 22px; min-width: 22px; margin-top: 2px; }
     #chart-wrap { position: relative; height: min(360px, 55vh); margin: 12px 0; }
@@ -474,7 +482,7 @@
           <div><label class="lbl">注入予定速度 (mL/h)</label><input type="number" id="plan-prate" min="0" step="5" value="${st.plannedRate}" /></div>
           <div><label class="lbl">注入予定時間 (h/day)</label><input type="number" id="plan-phours" min="0" max="24" step="1" value="${st.plannedHours}" /></div>
           <div style="grid-column:1/-1">
-            <label class="lbl">Day7時点の投与目標（ガイドライン必要量に対する達成率・%）</label>
+            <label class="lbl">day7時点に、理想の何%に到達していたいか？？</label>
             <input type="number" id="plan-day7" min="0" max="150" step="5" value="${st.day7Ratio}" />
             <p class="muted">ガイドライン上の理想に対し、Day7 で投与でその何％を満たしたいか。</p>
           </div>
@@ -781,8 +789,32 @@
       const protoCarb = (protoVol / 100) * carb100;
 
       const contraSel = CONTRA_OPTIONS.map((_, i) => document.getElementById(`contra-${i}`)?.checked).some(Boolean);
+      const assess = (st && st.assess) || {};
+      const cautionSel =
+        Number(assess.diarrhea || 0) >= 3 ||
+        Number(assess.vomit || 0) >= 1 ||
+        Number(assess.gastric || 0) >= 250 ||
+        assess.abd === "中等度" ||
+        assess.abd === "高度" ||
+        (Number(assess.plannedVol || 0) > 0 && (Number(assess.actualVol || 0) / Number(assess.plannedVol || 1)) * 100 < 90);
+      const signal = contraSel ? "red" : cautionSel ? "yellow" : "blue";
+      const signalLabel = signal === "red" ? "赤信号" : signal === "yellow" ? "黄信号" : "青信号";
+      const signalReason = signal === "red" ? "禁忌項目が選択されています。" : signal === "yellow" ? "注意項目があります。" : "禁忌・注意項目ともに認めません。";
+      const ratioDay7 = (v) => (day7Kcal > 0 ? (v / day7Kcal) * 100 : 0);
+      const ratioDay7By = (v, t) => (Number(t || 0) > 0 ? (Number(v || 0) / Number(t || 0)) * 100 : 0);
 
       el("plan-section4-out").innerHTML = `
+        <div class="signal-wrap">
+          <div class="traffic-light" aria-label="信号判定">
+            <div class="light-dot light-red ${signal === "red" ? "active" : ""}"></div>
+            <div class="light-dot light-yellow ${signal === "yellow" ? "active" : ""}"></div>
+            <div class="light-dot light-blue ${signal === "blue" ? "active" : ""}"></div>
+          </div>
+          <div class="signal-text">
+            <strong>判定: ${signalLabel}</strong>
+            <span class="muted">${signalReason}</span>
+          </div>
+        </div>
         <div class="table-scroll">
           <table class="data">
             <thead><tr><th>項目</th><th>値</th></tr></thead>
@@ -803,13 +835,13 @@
         <h4>現在値と目標値の見える化</h4>
         <div class="table-scroll">
           <table class="data">
-            <thead><tr><th>項目</th><th>Day${dayNow}</th><th>Day${dayNow}理想目標</th><th>Day7目標</th><th>差分(現在-同Day理想)</th></tr></thead>
+            <thead><tr><th>項目</th><th>Day${dayNow}</th><th>Day${dayNow}理想目標</th><th>Day7目標</th><th>差分(現在-同Day理想)</th><th>Day7目標に対する到達率(現在/Day7) %</th></tr></thead>
             <tbody>
-              <tr><td>投与量 (mL/day)</td><td>${fmt(actualVol, 1)}</td><td>${fmt(protoVol, 1)}</td><td>${fmt(day7Vol, 1)}</td><td>${fmt(actualVol - protoVol, 1)}</td></tr>
-              <tr><td>エネルギー</td><td>${fmt(actualKcal, 1)}</td><td>${fmt(protoKcal, 1)}</td><td>${fmt(day7Kcal, 1)}</td><td>${fmt(actualKcal - protoKcal, 1)}</td></tr>
-              <tr><td>たんぱく質</td><td>${fmt(actualProt, 1)}</td><td>${fmt(protoProt, 1)}</td><td>${fmt(day7Prot, 1)}</td><td>${fmt(actualProt - protoProt, 1)}</td></tr>
-              <tr><td>糖質</td><td>${fmt(actualCarb, 1)}</td><td>${fmt(protoCarb, 1)}</td><td>${fmt(day7Carb, 1)}</td><td>${fmt(actualCarb - protoCarb, 1)}</td></tr>
-              <tr><td>達成率 (%)</td><td>${fmt(actualRatio, 1)}</td><td>${fmt(protoRatio, 1)}</td><td>${fmt(day7Ratio, 1)}</td><td>${fmt(gapRatio, 1)}</td></tr>
+              <tr><td>投与量 (mL/day)</td><td>${fmt(actualVol, 1)}</td><td>${fmt(protoVol, 1)}</td><td>${fmt(day7Vol, 1)}</td><td>${fmt(actualVol - protoVol, 1)}</td><td>${fmt(ratioDay7By(actualVol, day7Vol), 1)}</td></tr>
+              <tr><td>エネルギー</td><td>${fmt(actualKcal, 1)}</td><td>${fmt(protoKcal, 1)}</td><td>${fmt(day7Kcal, 1)}</td><td>${fmt(actualKcal - protoKcal, 1)}</td><td>${fmt(ratioDay7(actualKcal), 1)}</td></tr>
+              <tr><td>たんぱく質</td><td>${fmt(actualProt, 1)}</td><td>${fmt(protoProt, 1)}</td><td>${fmt(day7Prot, 1)}</td><td>${fmt(actualProt - protoProt, 1)}</td><td>${fmt(ratioDay7By(actualProt, day7Prot), 1)}</td></tr>
+              <tr><td>糖質</td><td>${fmt(actualCarb, 1)}</td><td>${fmt(protoCarb, 1)}</td><td>${fmt(day7Carb, 1)}</td><td>${fmt(actualCarb - protoCarb, 1)}</td><td>${fmt(ratioDay7By(actualCarb, day7Carb), 1)}</td></tr>
+              <tr><td>達成率 (%)</td><td>${fmt(actualRatio, 1)}</td><td>${fmt(protoRatio, 1)}</td><td>${fmt(day7Ratio, 1)}</td><td>${fmt(gapRatio, 1)}</td><td>${fmt(ratioDay7By(actualRatio, day7Ratio), 1)}</td></tr>
             </tbody>
           </table>
         </div>
